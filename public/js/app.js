@@ -26,7 +26,7 @@ async function inicializarApp() {
     // Inicializar buscador
     inicializarBuscador();
     
-    // Inicializar formulario
+    // Inicializar formulario de sugerencias
     inicializarFormulario();
 }
 
@@ -284,6 +284,7 @@ function verificarSesion() {
 // Actualizar UI según estado de sesión
 function actualizarUIUsuario() {
     const navAuth = document.getElementById('navAuth');
+    const navCrear = document.getElementById('navCrear');
     
     if (!navAuth) {
         console.error('Elemento navAuth no encontrado');
@@ -306,6 +307,9 @@ function actualizarUIUsuario() {
         if (btnLogout) {
             btnLogout.onclick = cerrarSesion;
         }
+
+        // Mostrar accesos de creación
+        if (navCrear) navCrear.style.display = '';
     } else {
         // Usuario no logueado - Estilos Bootstrap
         navAuth.innerHTML = `
@@ -332,11 +336,15 @@ function actualizarUIUsuario() {
                 abrirModal('modalRegistro');
             };
         }
+
+        // Ocultar accesos de creación
+        if (navCrear) navCrear.style.display = 'none';
     }
     
     // Inicializar modales después de actualizar la UI
     setTimeout(inicializarModales, 100);
 }
+
 
 // Inicializar modales y sus eventos
 function inicializarModales() {
