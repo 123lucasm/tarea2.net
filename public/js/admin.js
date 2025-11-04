@@ -25,6 +25,9 @@ async function inicializarAdmin() {
     
     // Inicializar formularios
     inicializarFormularios();
+
+    // Inicializar gestión desde tarjetas
+    inicializarGestionEventos();
 }
 
 // Verificar sesión al cargar
@@ -33,6 +36,249 @@ function verificarSesion() {
     if (usuarioGuardado) {
         usuarioActual = JSON.parse(usuarioGuardado);
     }
+}
+
+// Inicializar eventos de gestión (estadísticas rápidas)
+function inicializarGestionEventos() {
+    const cardCategorias = document.getElementById('cardCategorias');
+    const cardContenidos = document.getElementById('cardContenidos');
+    const cardSugerencias = document.getElementById('cardSugerencias');
+    const btnCerrarGestion = document.getElementById('btnCerrarGestion');
+
+    if (cardCategorias) cardCategorias.addEventListener('click', () => window.location.href = '/admin-categorias.html');
+    if (cardContenidos) cardContenidos.addEventListener('click', () => window.location.href = '/admin-contenidos.html');
+    if (cardSugerencias) cardSugerencias.addEventListener('click', () => window.location.href = '/admin-sugerencias.html');
+    if (btnCerrarGestion) btnCerrarGestion.addEventListener('click', ocultarGestion);
+}
+
+function ocultarGestion() {
+    const adminGestion = document.getElementById('adminGestion');
+    if (adminGestion) adminGestion.style.display = 'none';
+}
+
+async function mostrarGestion(tipo) {
+    const adminGestion = document.getElementById('adminGestion');
+    const titulo = document.getElementById('gestionTitulo');
+    const descripcion = document.getElementById('gestionDescripcion');
+    const thead = document.getElementById('gestionThead');
+    const tbody = document.getElementById('gestionTbody');
+
+    if (!adminGestion || !titulo || !descripcion || !thead || !tbody) return;
+
+    adminGestion.style.display = '';
+    tbody.innerHTML = '';
+
+    if (tipo === 'categorias') {
+        titulo.textContent = 'Gestión de categorías';
+        descripcion.textContent = 'Edita o elimina categorías existentes.';
+        thead.innerHTML = `
+            <tr>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th class="text-end">Acciones</th>
+            </tr>
+        `;
+        const categorias = await (await fetch('/api/categorias')).json();
+        categorias.forEach(cat => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${escapeHtml(cat.nombre)}</td>
+                <td>${escapeHtml(cat.descripcion)}</td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-primary me-2" data-action="editar" data-id="${cat._id}"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" data-action="eliminar" data-id="${cat._id}"><i class="bi bi-trash"></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        tbody.addEventListener('click', (e) => manejarAccionTabla(e, 'categorias'));
+    }
+
+    if (tipo === 'contenidos') {
+        titulo.textContent = 'Gestión de recursos';
+        descripcion.textContent = 'Edita o elimina recursos (contenidos).';
+        thead.innerHTML = `
+            <tr>
+                <th>Título</th>
+                <th>Tema</th>
+                <th>Tipo</th>
+                <th>Categoría</th>
+                <th class="text-end">Acciones</th>
+            </tr>
+        `;
+        const contenidos = await (await fetch('/api/contenidos')).json();
+        contenidos.forEach(c => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${escapeHtml(c.titulo)}</td>
+                <td>${escapeHtml(c.tema)}</td>
+                <td>${escapeHtml(c.tipo)}</td>
+                <td>${escapeHtml(c.categoria)}</td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-primary me-2" data-action="editar" data-id="${c._id}"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" data-action="eliminar" data-id="${c._id}"><i class="bi bi-trash"></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        tbody.addEventListener('click', (e) => manejarAccionTabla(e, 'contenidos'));
+    }
+
+    if (tipo === 'sugerencias') {
+        titulo.textContent = 'Gestión de sugerencias';
+        descripcion.textContent = 'Revisa, edita o elimina sugerencias.';
+        thead.innerHTML = `
+            <tr>
+                <th>Nombre</th>
+                <th>Correo</th>
+                <th>Texto</th>
+                <th>Leída</th>
+                <th class="text-end">Acciones</th>
+            </tr>
+        `;
+        const sugerencias = await (await fetch('/api/sugerencias')).json();
+        sugerencias.forEach(s => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${escapeHtml(s.nombre || 'Anónimo')}</td>
+                <td>${escapeHtml(s.correo || '')}</td>
+                <td>${escapeHtml(s.texto)}</td>
+                <td>${s.leida ? '<span class="badge bg-success">Sí</span>' : '<span class="badge bg-secondary">No</span>'}</td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-success me-2" data-action="marcarLeida" data-id="${s._id}" ${s.leida ? 'disabled' : ''}><i class="bi bi-check2"></i></button>
+                    <button class="btn btn-sm btn-outline-primary me-2" data-action="editar" data-id="${s._id}"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" data-action="eliminar" data-id="${s._id}"><i class="bi bi-trash"></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        tbody.addEventListener('click', (e) => manejarAccionTabla(e, 'sugerencias'));
+    }
+}
+
+function manejarAccionTabla(event, tipo) {
+    const btn = event.target.closest('button');
+    if (!btn) return;
+    const accion = btn.getAttribute('data-action');
+    const id = btn.getAttribute('data-id');
+    if (!accion || !id) return;
+
+    if (accion === 'eliminar') {
+        eliminarElemento(tipo, id);
+    } else if (accion === 'editar') {
+        editarElemento(tipo, id);
+    } else if (accion === 'marcarLeida') {
+        marcarSugerenciaLeida(id);
+    }
+}
+
+async function eliminarElemento(tipo, id) {
+    if (!confirm('¿Seguro que deseas eliminar este registro?')) return;
+    try {
+        let url = '';
+        if (tipo === 'categorias') url = `/api/categorias/${id}`;
+        if (tipo === 'contenidos') url = `/api/contenidos/${id}`;
+        if (tipo === 'sugerencias') url = `/api/sugerencias/${id}`;
+        const resp = await fetch(url, { method: 'DELETE' });
+        if (!resp.ok) throw new Error('Error al eliminar');
+        mostrarToast('Eliminado correctamente', 'success');
+        await actualizarEstadisticas();
+        mostrarGestion(tipo);
+    } catch (e) {
+        console.error(e);
+        mostrarToast('No se pudo eliminar', 'error');
+    }
+}
+
+async function editarElemento(tipo, id) {
+    try {
+        if (tipo === 'categorias') {
+            const nombre = prompt('Nuevo nombre de la categoría:');
+            if (nombre === null) return;
+            const descripcion = prompt('Nueva descripción:');
+            if (descripcion === null) return;
+            const resp = await fetch(`/api/categorias/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nombre, descripcion })
+            });
+            if (!resp.ok) throw new Error('Error al actualizar');
+            mostrarToast('Categoría actualizada', 'success');
+            await poblarSelectCategorias();
+            mostrarGestion('categorias');
+            return;
+        }
+
+        if (tipo === 'contenidos') {
+            // Cargar actual para sugerir valores
+            const actual = await (await fetch(`/api/contenidos/${id}`)).json();
+            const titulo = prompt('Nuevo título:', actual.titulo);
+            if (titulo === null) return;
+            const tema = prompt('Nuevo tema:', actual.tema);
+            if (tema === null) return;
+            const tipoRecurso = prompt('Nuevo tipo (infografia|video):', actual.tipo);
+            if (tipoRecurso === null) return;
+            const categoria = prompt('Nueva categoría:', actual.categoria);
+            if (categoria === null) return;
+            const descripcion = prompt('Nueva descripción:', actual.descripcion);
+            if (descripcion === null) return;
+            const enlace = prompt('Nuevo enlace:', actual.enlace);
+            if (enlace === null) return;
+            const resp = await fetch(`/api/contenidos/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ titulo, tema, tipo: tipoRecurso, categoria, descripcion, enlace })
+            });
+            if (!resp.ok) throw new Error('Error al actualizar');
+            mostrarToast('Recurso actualizado', 'success');
+            mostrarGestion('contenidos');
+            return;
+        }
+
+        if (tipo === 'sugerencias') {
+            const actual = await obtenerSugerencia(id);
+            const texto = prompt('Editar texto de la sugerencia:', actual.texto);
+            if (texto === null) return;
+            const resp = await fetch(`/api/sugerencias/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ texto })
+            });
+            if (!resp.ok) throw new Error('Error al actualizar');
+            mostrarToast('Sugerencia actualizada', 'success');
+            mostrarGestion('sugerencias');
+            return;
+        }
+    } catch (e) {
+        console.error(e);
+        mostrarToast('No se pudo actualizar', 'error');
+    }
+}
+
+async function marcarSugerenciaLeida(id) {
+    try {
+        const resp = await fetch(`/api/sugerencias/${id}/leida`, { method: 'PUT' });
+        if (!resp.ok) throw new Error();
+        mostrarToast('Sugerencia marcada como leída', 'success');
+        mostrarGestion('sugerencias');
+    } catch (e) {
+        mostrarToast('No se pudo actualizar', 'error');
+    }
+}
+
+async function obtenerSugerencia(id) {
+    const lista = await (await fetch('/api/sugerencias')).json();
+    return lista.find(s => s._id === id) || {};
+}
+
+function escapeHtml(unsafe) {
+    if (unsafe === null || unsafe === undefined) return '';
+    return String(unsafe)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
 // Actualizar UI según estado de sesión

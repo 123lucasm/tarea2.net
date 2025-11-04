@@ -138,6 +138,40 @@ app.post('/api/categorias', async (req, res) => {
   }
 });
 
+// PUT - Actualizar categoría
+app.put('/api/categorias/:id', async (req, res) => {
+  try {
+    const categoria = await Categoria.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+
+    if (!categoria) {
+      return res.status(404).json({ error: 'Categoría no encontrada' });
+    }
+
+    res.json(categoria);
+  } catch (error) {
+    console.error('Error al actualizar categoría:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// DELETE - Eliminar categoría (hard delete)
+app.delete('/api/categorias/:id', async (req, res) => {
+  try {
+    const categoria = await Categoria.findByIdAndDelete(req.params.id);
+    if (!categoria) {
+      return res.status(404).json({ error: 'Categoría no encontrada' });
+    }
+    res.json({ mensaje: 'Categoría eliminada correctamente', categoria });
+  } catch (error) {
+    console.error('Error al eliminar categoría:', error);
+    res.status(500).json({ error: 'Error al eliminar la categoría' });
+  }
+});
+
 // GET - Obtener todas las sugerencias
 app.get('/api/sugerencias', async (req, res) => {
   try {
@@ -182,6 +216,40 @@ app.put('/api/sugerencias/:id/leida', async (req, res) => {
   } catch (error) {
     console.error('Error al actualizar sugerencia:', error);
     res.status(500).json({ error: 'Error al actualizar la sugerencia' });
+  }
+});
+
+// PUT - Actualizar sugerencia (texto o campos básicos)
+app.put('/api/sugerencias/:id', async (req, res) => {
+  try {
+    const sugerencia = await Sugerencia.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+
+    if (!sugerencia) {
+      return res.status(404).json({ error: 'Sugerencia no encontrada' });
+    }
+
+    res.json(sugerencia);
+  } catch (error) {
+    console.error('Error al actualizar sugerencia:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// DELETE - Eliminar sugerencia
+app.delete('/api/sugerencias/:id', async (req, res) => {
+  try {
+    const sugerencia = await Sugerencia.findByIdAndDelete(req.params.id);
+    if (!sugerencia) {
+      return res.status(404).json({ error: 'Sugerencia no encontrada' });
+    }
+    res.json({ mensaje: 'Sugerencia eliminada correctamente', sugerencia });
+  } catch (error) {
+    console.error('Error al eliminar sugerencia:', error);
+    res.status(500).json({ error: 'Error al eliminar la sugerencia' });
   }
 });
 
