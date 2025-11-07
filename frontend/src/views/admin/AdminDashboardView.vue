@@ -30,8 +30,9 @@
       </section>
     </div>
 
-    <div class="col-12 lg:col-4">
-      <section class="surface-card border-round-2xl shadow-2 p-4 lg:p-5 h-full">
+    <div class="col-12">
+      <div class="form-panels">
+        <section class="form-panel surface-card border-round-2xl shadow-2 p-4 lg:p-5">
         <h2 class="text-xl font-semibold mb-3">Nueva categoría</h2>
         <p class="text-600 mb-4">Organiza tus contenidos creando categorías temáticas.</p>
         <form class="flex flex-column gap-3" @submit.prevent="crearCategoria">
@@ -51,11 +52,9 @@
           </div>
           <PvButton type="submit" label="Crear categoría" icon="pi pi-check" :loading="enviandoCategoria" />
         </form>
-      </section>
-    </div>
+        </section>
 
-    <div class="col-12 lg:col-8">
-      <section class="surface-card border-round-2xl shadow-2 p-4 lg:p-5 h-full">
+        <section class="form-panel surface-card border-round-2xl shadow-2 p-4 lg:p-5">
         <h2 class="text-xl font-semibold mb-3">Nuevo recurso</h2>
         <p class="text-600 mb-4">Publica contenidos para los estudiantes seleccionando la categoría adecuada.</p>
         <form class="grid" @submit.prevent="crearContenido">
@@ -115,7 +114,8 @@
             <PvButton type="submit" label="Publicar recurso" icon="pi pi-upload" :loading="enviandoContenido" />
           </div>
         </form>
-      </section>
+        </section>
+      </div>
     </div>
 
     <div class="col-12">
@@ -316,6 +316,22 @@ onMounted(() => {
 .quick-icon {
   font-size: 1.8rem;
   color: var(--app-primary);
+}
+
+.form-panels {
+  display: grid;
+  gap: 1.5rem;
+}
+
+@media (min-width: 992px) {
+  .form-panels {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+    align-items: stretch;
+  }
+}
+
+.form-panel {
+  height: 100%;
 }
 
 label {

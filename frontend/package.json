@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@primevue/themes": "^4.4.1",
+    "equilibrio-universitario": "file:..",
     "pinia": "^3.0.4",
     "primeflex": "^4.0.0",
     "primeicons": "^7.0.0",
