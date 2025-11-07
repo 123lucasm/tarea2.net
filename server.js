@@ -3,6 +3,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const connectDB = require('./config/database');
 
 // Modelos
@@ -13,6 +14,9 @@ const Usuario = require('./models/Usuario');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const distPath = path.join(__dirname, 'frontend', 'dist');
+const publicPath = path.join(__dirname, 'public');
+const isDistBuilt = fs.existsSync(distPath);
 
 // Conectar a MongoDB
 connectDB();
@@ -21,7 +25,12 @@ connectDB();
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static('public'));
+if (isDistBuilt) {
+  app.use(express.static(distPath));
+} else {
+  console.warn('⚠️  No se encontró el build de Vue. Sirviendo assets legacy desde /public');
+  app.use(express.static(publicPath));
+}
 
 // ==================== RUTAS API ====================
 
@@ -462,9 +471,17 @@ app.post('/api/usuarios/:id/historial/:contenidoId', async (req, res) => {
   }
 });
 
-// Ruta principal
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// Ruta principal (SPA)
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
+
+  if (isDistBuilt) {
+    return res.sendFile(path.join(distPath, 'index.html'));
+  }
+
+  res.sendFile(path.join(publicPath, 'index.html'));
 });
 
 // Iniciar servidor

@@ -32,26 +32,95 @@ async function inicializarApp() {
 
 // Las funciones de navegación y smooth scroll ya están manejadas por Bootstrap
 
+// Variables globales para el slider
+let todasLasCategorias = [];
+let sliderInterval = null;
+let currentSlideIndex = 0;
+
 // Cargar categorías
 async function cargarCategorias() {
     try {
         const response = await fetch('/api/categorias');
-        const categorias = await response.json();
+        todasLasCategorias = await response.json();
         
-        const grid = document.getElementById('categoriasGrid');
-        grid.innerHTML = '';
+        // Crear slider con 3 categorías visibles
+        crearSliderCategorias();
         
-        const colores = [
-            { bg: 'linear-gradient(135deg, #6366f1, #8b5cf6)', class: 'productividad' },
-            { bg: 'linear-gradient(135deg, #ec4899, #f43f5e)', class: 'estudio' },
-            { bg: 'linear-gradient(135deg, #10b981, #059669)', class: 'bienestar' }
-        ];
+        // Crear grid de todas las categorías para el modal
+        crearGridTodasCategorias();
         
-        categorias.forEach((categoria, index) => {
-            const colorInfo = colores[index % colores.length];
-            const col = document.createElement('div');
-            col.className = 'col-md-4';
-            col.innerHTML = `
+        // Iniciar slider automático
+        iniciarSliderAutomatico();
+        
+        // Configurar botón "Ver todas las categorías"
+        const btnVerTodas = document.getElementById('btnVerTodasCategorias');
+        if (btnVerTodas) {
+            btnVerTodas.addEventListener('click', () => {
+                mostrarTodasCategorias();
+            });
+        }
+        
+        // Configurar botón "Ocultar categorías"
+        const btnOcultar = document.getElementById('btnOcultarCategorias');
+        if (btnOcultar) {
+            btnOcultar.addEventListener('click', () => {
+                ocultarTodasCategorias();
+            });
+        }
+        
+        // Recalcular slider al cambiar tamaño de ventana
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                crearSliderCategorias();
+                iniciarSliderAutomatico();
+            }, 250);
+        });
+    } catch (error) {
+        console.error('Error al cargar categorías:', error);
+    }
+}
+
+// Crear slider de categorías
+function crearSliderCategorias() {
+    const slider = document.getElementById('categoriasSlider');
+    const indicators = document.getElementById('categoriasIndicators');
+    
+    if (!slider) return;
+    
+    slider.innerHTML = '';
+    if (indicators) indicators.innerHTML = '';
+    
+    const colores = [
+        { bg: 'linear-gradient(135deg, #6366f1, #8b5cf6)', class: 'productividad' },
+        { bg: 'linear-gradient(135deg, #ec4899, #f43f5e)', class: 'estudio' },
+        { bg: 'linear-gradient(135deg, #10b981, #059669)', class: 'bienestar' }
+    ];
+    
+    // Calcular número de slides (3 categorías por slide en desktop, 1 en móvil)
+    const categoriasPorSlide = window.innerWidth <= 768 ? 1 : 3;
+    const totalSlides = Math.ceil(todasLasCategorias.length / categoriasPorSlide);
+    
+    // Crear slides
+    for (let i = 0; i < totalSlides; i++) {
+        const slide = document.createElement('div');
+        slide.className = 'categorias-slide';
+        slide.style.display = 'flex';
+        slide.style.gap = '1rem';
+        
+        // Agregar 3 categorías por slide
+        for (let j = 0; j < categoriasPorSlide; j++) {
+            const categoriaIndex = i * categoriasPorSlide + j;
+            if (categoriaIndex >= todasLasCategorias.length) break;
+            
+            const categoria = todasLasCategorias[categoriaIndex];
+            const colorInfo = colores[categoriaIndex % colores.length];
+            
+            const categoriaCard = document.createElement('div');
+            categoriaCard.className = 'col-md-4';
+            categoriaCard.style.flex = '1';
+            categoriaCard.innerHTML = `
                 <div class="card categoria-card ${colorInfo.class}" style="background: ${colorInfo.bg};">
                     <div class="card-body">
                         <h3>${categoria.nombre}</h3>
@@ -60,14 +129,161 @@ async function cargarCategorias() {
                 </div>
             `;
             
-            col.querySelector('.card').addEventListener('click', () => {
+            categoriaCard.querySelector('.card').addEventListener('click', () => {
                 filtrarPorCategoria(categoria.nombre);
             });
             
-            grid.appendChild(col);
+            slide.appendChild(categoriaCard);
+        }
+        
+        slider.appendChild(slide);
+        
+        // Crear indicador
+        if (indicators) {
+            const indicator = document.createElement('div');
+            indicator.className = `categorias-indicator ${i === 0 ? 'active' : ''}`;
+            indicator.addEventListener('click', () => {
+                irASlide(i);
+            });
+            indicators.appendChild(indicator);
+        }
+    }
+    
+    // Actualizar posición inicial
+    actualizarSlider();
+}
+
+// Crear grid de todas las categorías para el modal
+function crearGridTodasCategorias() {
+    const grid = document.getElementById('todasCategoriasGrid');
+    if (!grid) return;
+    
+    grid.innerHTML = '';
+    
+    const colores = [
+        { bg: 'linear-gradient(135deg, #6366f1, #8b5cf6)', class: 'productividad' },
+        { bg: 'linear-gradient(135deg, #ec4899, #f43f5e)', class: 'estudio' },
+        { bg: 'linear-gradient(135deg, #10b981, #059669)', class: 'bienestar' }
+    ];
+    
+    todasLasCategorias.forEach((categoria, index) => {
+        const colorInfo = colores[index % colores.length];
+        const col = document.createElement('div');
+        col.className = 'col-md-6 col-lg-4';
+        col.innerHTML = `
+            <div class="card categoria-card ${colorInfo.class}" style="background: ${colorInfo.bg};">
+                <div class="card-body">
+                    <h3>${categoria.nombre}</h3>
+                    <p class="mb-0">${categoria.descripcion}</p>
+                </div>
+            </div>
+        `;
+        
+        col.querySelector('.card').addEventListener('click', () => {
+            ocultarTodasCategorias();
+            setTimeout(() => {
+                filtrarPorCategoria(categoria.nombre);
+            }, 300);
         });
-    } catch (error) {
-        console.error('Error al cargar categorías:', error);
+        
+        grid.appendChild(col);
+    });
+}
+
+// Iniciar slider automático
+function iniciarSliderAutomatico() {
+    // Limpiar intervalo anterior si existe
+    if (sliderInterval) {
+        clearInterval(sliderInterval);
+    }
+    
+    const categoriasPorSlide = window.innerWidth <= 768 ? 1 : 3;
+    const totalSlides = Math.ceil(todasLasCategorias.length / categoriasPorSlide);
+    if (totalSlides <= 1) return; // No hay necesidad de slider si solo hay un slide
+    
+    // Cambiar slide cada 4 segundos
+    sliderInterval = setInterval(() => {
+        currentSlideIndex = (currentSlideIndex + 1) % totalSlides;
+        irASlide(currentSlideIndex);
+    }, 4000);
+    
+    // Pausar slider cuando la página está oculta (mejor rendimiento)
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            if (sliderInterval) {
+                clearInterval(sliderInterval);
+            }
+        } else {
+            iniciarSliderAutomatico();
+        }
+    });
+}
+
+// Ir a un slide específico
+function irASlide(index) {
+    const categoriasPorSlide = window.innerWidth <= 768 ? 1 : 3;
+    const totalSlides = Math.ceil(todasLasCategorias.length / categoriasPorSlide);
+    if (index < 0 || index >= totalSlides) return;
+    
+    currentSlideIndex = index;
+    actualizarSlider();
+    
+    // Actualizar indicadores
+    const indicators = document.querySelectorAll('.categorias-indicator');
+    indicators.forEach((indicator, i) => {
+        if (i === index) {
+            indicator.classList.add('active');
+        } else {
+            indicator.classList.remove('active');
+        }
+    });
+}
+
+// Actualizar posición del slider
+function actualizarSlider() {
+    const slider = document.getElementById('categoriasSlider');
+    if (!slider) return;
+    
+    const slideWidth = 100; // 100% por slide
+    const translateX = -currentSlideIndex * slideWidth;
+    slider.style.transform = `translateX(${translateX}%)`;
+}
+
+// Mostrar todas las categorías en sección expandida
+function mostrarTodasCategorias() {
+    const seccion = document.getElementById('todasCategoriasSection');
+    const btnVer = document.getElementById('btnVerTodasCategorias');
+    
+    if (seccion) {
+        seccion.style.display = 'block';
+        // Scroll suave a la sección expandida
+        setTimeout(() => {
+            seccion.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+    }
+    
+    if (btnVer) {
+        btnVer.style.display = 'none';
+    }
+}
+
+// Ocultar todas las categorías
+function ocultarTodasCategorias() {
+    const seccion = document.getElementById('todasCategoriasSection');
+    const btnVer = document.getElementById('btnVerTodasCategorias');
+    
+    if (seccion) {
+        seccion.style.display = 'none';
+    }
+    
+    if (btnVer) {
+        btnVer.style.display = 'inline-block';
+    }
+    
+    // Scroll suave de vuelta al slider
+    const categoriasSection = document.getElementById('categorias');
+    if (categoriasSection) {
+        categoriasSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 }
 
@@ -285,6 +501,11 @@ function verificarSesion() {
 function actualizarUIUsuario() {
     const navAuth = document.getElementById('navAuth');
     const navCrear = document.getElementById('navCrear');
+    const navComunidad = document.getElementById('navComunidad');
+    const navSugerencias = document.getElementById('navSugerencias');
+    const seccionComunidad = document.getElementById('seccionComunidad');
+    const seccionSugerencias = document.getElementById('seccionSugerencias');
+    const heroComunidad = document.getElementById('heroComunidad');
     
     if (!navAuth) {
         console.error('Elemento navAuth no encontrado');
@@ -308,8 +529,32 @@ function actualizarUIUsuario() {
             btnLogout.onclick = cerrarSesion;
         }
 
-        // Mostrar accesos de creación
-        if (navCrear) navCrear.style.display = '';
+        // Mostrar accesos de creación (esto indica que es admin)
+        if (navCrear) {
+            navCrear.style.display = '';
+            // Si navCrear está visible, el usuario es admin, ocultar secciones
+            // Ocultar secciones de comunidad y sugerencias para admin
+            if (navComunidad) navComunidad.style.display = 'none';
+            if (navSugerencias) navSugerencias.style.display = 'none';
+            if (seccionComunidad && seccionComunidad.closest('section')) {
+                seccionComunidad.closest('section').style.display = 'none';
+            }
+            if (seccionSugerencias && seccionSugerencias.closest('section')) {
+                seccionSugerencias.closest('section').style.display = 'none';
+            }
+            if (heroComunidad) heroComunidad.style.display = 'none';
+        } else {
+            // Si no hay navCrear, mostrar las secciones
+            if (navComunidad) navComunidad.style.display = '';
+            if (navSugerencias) navSugerencias.style.display = '';
+            if (seccionComunidad && seccionComunidad.closest('section')) {
+                seccionComunidad.closest('section').style.display = '';
+            }
+            if (seccionSugerencias && seccionSugerencias.closest('section')) {
+                seccionSugerencias.closest('section').style.display = '';
+            }
+            if (heroComunidad) heroComunidad.style.display = '';
+        }
     } else {
         // Usuario no logueado - Estilos Bootstrap
         navAuth.innerHTML = `
@@ -339,6 +584,17 @@ function actualizarUIUsuario() {
 
         // Ocultar accesos de creación
         if (navCrear) navCrear.style.display = 'none';
+        
+        // Mostrar todas las secciones para usuarios no logueados
+        if (navComunidad) navComunidad.style.display = '';
+        if (navSugerencias) navSugerencias.style.display = '';
+        if (seccionComunidad && seccionComunidad.closest('section')) {
+            seccionComunidad.closest('section').style.display = '';
+        }
+        if (seccionSugerencias && seccionSugerencias.closest('section')) {
+            seccionSugerencias.closest('section').style.display = '';
+        }
+        if (heroComunidad) heroComunidad.style.display = '';
     }
     
     // Inicializar modales después de actualizar la UI

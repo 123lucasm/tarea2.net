@@ -97,6 +97,91 @@
         .categoria-card h3 {
             font-weight: 700;
             margin-bottom: 1rem;
+            color: white;
+        }
+        
+        .categoria-card p {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        /* Slider de categorías */
+        .categorias-slider-container {
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 2rem;
+            width: 100%;
+        }
+        
+        .categorias-slider {
+            display: flex;
+            transition: transform 0.5s ease-in-out;
+            will-change: transform;
+            width: 100%;
+        }
+        
+        .categorias-slide {
+            flex: 0 0 100%;
+            min-width: 100%;
+            display: flex;
+            gap: 1rem;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        .categorias-slide .col-md-4 {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        @media (max-width: 768px) {
+            .categorias-slide {
+                flex-direction: column;
+            }
+            
+            .categorias-slide .col-md-4 {
+                flex: 1 1 100%;
+            }
+        }
+        
+        .categorias-controls {
+            text-align: center;
+            margin-top: 2rem;
+        }
+        
+        .categorias-indicators {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .categorias-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .categorias-indicator.active {
+            background: #667eea;
+        }
+        
+        /* Sección expandida de todas las categorías */
+        .todas-categorias-section {
+            animation: fadeInDown 0.5s ease-out;
+        }
+        
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         
         /* Contenidos */
@@ -194,10 +279,10 @@
                     <li class="nav-item">
                         <a class="nav-link" href="#contenidos">Recursos</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" id="navComunidad">
                         <a class="nav-link" href="#comunidad">Comunidad</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" id="navSugerencias">
                         <a class="nav-link" href="#sugerencias">Sugerencias</a>
                     </li>
                     <li class="nav-item" id="navCrear" style="display: none;">
@@ -220,7 +305,7 @@
                         <a href="#contenidos" class="btn btn-light btn-lg">
                             <i class="bi bi-compass me-2"></i>Explorar Recursos
                         </a>
-                        <a href="#comunidad" class="btn btn-outline-light btn-lg">
+                        <a href="#comunidad" class="btn btn-outline-light btn-lg" id="heroComunidad">
                             <i class="bi bi-people me-2"></i>Únete a la Comunidad
                         </a>
                     </div>
@@ -235,8 +320,36 @@
     <section id="categorias" class="py-5 bg-light">
         <div class="container">
             <h2 class="text-center mb-5 fw-bold">Explora por Categorías</h2>
-            <div class="row g-4" id="categoriasGrid">
-                <!-- Se cargará dinámicamente -->
+            
+            <!-- Slider de categorías -->
+            <div class="categorias-slider-container">
+                <div class="categorias-slider" id="categoriasSlider">
+                    <!-- Se cargará dinámicamente -->
+                </div>
+            </div>
+            
+            <!-- Indicadores y controles -->
+            <div class="categorias-controls">
+                <div class="categorias-indicators" id="categoriasIndicators">
+                    <!-- Se cargará dinámicamente -->
+                </div>
+                <button class="btn btn-primary btn-lg" id="btnVerTodasCategorias">
+                    <i class="bi bi-grid-3x3-gap me-2"></i>Ver Todas las Categorías
+                </button>
+            </div>
+            
+            <!-- Sección expandida con todas las categorías (oculta por defecto) -->
+            <div id="todasCategoriasSection" class="todas-categorias-section" style="display: none;">
+                <hr class="my-5">
+                <h3 class="text-center mb-4 fw-bold">Todas las Categorías</h3>
+                <div class="row g-4" id="todasCategoriasGrid">
+                    <!-- Se cargará dinámicamente -->
+                </div>
+                <div class="text-center mt-4">
+                    <button class="btn btn-outline-secondary" id="btnOcultarCategorias">
+                        <i class="bi bi-chevron-up me-2"></i>Ocultar Categorías
+                    </button>
+                </div>
             </div>
         </div>
     </section>
@@ -278,7 +391,7 @@
 
     <!-- Comunidad -->
     <section id="comunidad" class="py-5 bg-light">
-        <div class="container">
+        <div class="container" id="seccionComunidad">
             <h2 class="text-center mb-4 fw-bold">Únete a Nuestra Comunidad</h2>
             <p class="text-center text-muted mb-5">Comparte tus experiencias, plantea situaciones y recibe apoyo de otros estudiantes.</p>
             
@@ -373,7 +486,7 @@
 
     <!-- Sugerencias -->
     <section id="sugerencias" class="py-5">
-        <div class="container">
+        <div class="container" id="seccionSugerencias">
             <div class="row justify-content-center">
                 <div class="col-lg-8">
                     <h2 class="text-center mb-4 fw-bold">Sugerencias y Nuevos Temas</h2>
