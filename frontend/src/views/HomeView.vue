@@ -161,26 +161,35 @@
           <PvCard class="content-card h-full">
             <template #content>
               <div class="resource-card">
-                <div class="resource-card__icon">
-                  <i :class="tipoIcon(contenido.tipo)" />
-                </div>
-                <div class="resource-card__header">
-                  <PvTag :value="tipoLabel(contenido.tipo)" :severity="tipoSeverity(contenido.tipo)" rounded />
-                  <h3>{{ contenido.titulo }}</h3>
-                </div>
+                <header class="resource-card__header">
+                  <div class="resource-card__icon">
+                    <i :class="tipoIcon(contenido.tipo)" />
+                  </div>
+                  <div class="resource-card__title">
+                    <h3>{{ contenido.titulo }}</h3>
+                    <span>{{ contenido.tema }}</span>
+                  </div>
+                  <PvTag
+                    class="resource-card__tag"
+                    :value="tipoLabel(contenido.tipo)"
+                    :severity="tipoSeverity(contenido.tipo)"
+                    rounded
+                  />
+                </header>
                 <p class="resource-card__description">{{ contenido.descripcion }}</p>
-                <div class="resource-card__meta">
-                  <span><i class="pi pi-tag" /> {{ contenido.categoria }}</span>
-                  <span><i class="pi pi-bookmark" /> {{ contenido.tema }}</span>
-                </div>
-                <PvButton
-                  class="resource-card__action"
-                  label="Ver recurso"
-                  icon="pi pi-external-link"
-                  severity="primary"
-                  outlined
-                  @click="abrirRecurso(contenido, $event)"
-                />
+                <footer class="resource-card__footer">
+                  <div class="resource-card__meta">
+                    <span><i class="pi pi-tag" /> {{ contenido.categoria }}</span>
+                  </div>
+                  <PvButton
+                    class="resource-card__action"
+                    label="Ver recurso"
+                    icon="pi pi-external-link"
+                    severity="primary"
+                    outlined
+                    @click="abrirRecurso(contenido, $event)"
+                  />
+                </footer>
               </div>
             </template>
           </PvCard>
@@ -598,8 +607,12 @@ watch(
 
 .hero {
   padding: clamp(2.5rem, 7vw, 4.5rem);
-  background: linear-gradient(135deg, var(--app-gradient-start), var(--app-gradient-end));
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(124, 58, 237, 0.26)),
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.28), transparent 50%);
   color: var(--app-text-primary);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  position: relative;
+  overflow: hidden;
 }
 
 .hero h1 {
@@ -608,7 +621,7 @@ watch(
 }
 
 .hero p {
-  color: var(--app-text-secondary);
+  color: rgba(17, 24, 39, 0.68);
   max-width: 28rem;
 }
 
@@ -620,28 +633,35 @@ watch(
   gap: 1rem;
 }
 
+section.surface-card {
+  background: linear-gradient(160deg, rgba(248, 250, 255, 0.95), rgba(224, 242, 254, 0.72));
+  border: 1px solid rgba(99, 102, 241, 0.26);
+  box-shadow: 0 22px 50px rgba(99, 102, 241, 0.15);
+}
+
 .stats-card .surface-card {
-  border: 1px solid var(--app-outline);
-  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(99, 102, 241, 0.28);
+  background: rgba(248, 250, 255, 0.92);
+  box-shadow: 0 24px 52px rgba(99, 102, 241, 0.12);
 }
 
 .empty-state {
-  background: rgba(255, 255, 255, 0.65);
+  background: rgba(248, 250, 255, 0.88);
   color: var(--app-text-secondary);
   border: 1px solid var(--app-outline);
 }
 
 .category-card {
   min-height: 160px;
-  background: linear-gradient(180deg, rgba(79, 70, 229, 0.12), rgba(79, 70, 229, 0.05));
-  border: 1px solid rgba(79, 70, 229, 0.18);
+  background: linear-gradient(160deg, rgba(99, 102, 241, 0.18), rgba(165, 180, 252, 0.14));
+  border: 1px solid rgba(99, 102, 241, 0.32);
   cursor: pointer;
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .category-card:hover {
   transform: translateY(-6px);
-  box-shadow: 0 18px 30px rgba(79, 70, 229, 0.15);
+  box-shadow: 0 26px 52px rgba(124, 58, 237, 0.2);
 }
 
 .category-card__body {
@@ -656,9 +676,10 @@ watch(
   width: 3rem;
   height: 3rem;
   border-radius: 1rem;
-  background: rgba(79, 70, 229, 0.15);
-  color: var(--app-primary);
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
   font-size: 1.2rem;
+  box-shadow: 0 16px 32px rgba(99, 102, 241, 0.24);
 }
 
 .category-card__body h3 {
@@ -673,52 +694,88 @@ watch(
 }
 
 .content-card {
-  border: 1px solid var(--app-outline);
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(6px);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: linear-gradient(150deg, rgba(248, 250, 255, 0.96), rgba(224, 242, 254, 0.7));
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease, background 0.25s ease;
+}
+
+.content-card:hover {
+  border-color: rgba(124, 58, 237, 0.45);
+  box-shadow: 0 28px 56px rgba(124, 58, 237, 0.22);
+  transform: translateY(-4px);
+  background: linear-gradient(150deg, rgba(237, 233, 254, 0.98), rgba(224, 242, 254, 0.88));
 }
 
 .resource-card {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  min-height: 100%;
-}
-
-.resource-card__icon {
-  width: 3.5rem;
-  height: 3.5rem;
-  border-radius: 1.2rem;
-  background: rgba(79, 70, 229, 0.12);
-  color: var(--app-primary);
   display: grid;
-  place-items: center;
-  font-size: 1.4rem;
+  grid-template-rows: auto 1fr auto;
+  gap: 1.5rem;
+  height: 100%;
 }
 
 .resource-card__header {
   display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+  align-items: center;
+  gap: 1rem;
 }
 
-.resource-card__header h3 {
+.resource-card__icon {
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 1.2rem;
+  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 1.35rem;
+  box-shadow: 0 18px 34px rgba(99, 102, 241, 0.24);
+}
+
+.resource-card__title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+.resource-card__title h3 {
   margin: 0;
   font-size: 1.25rem;
   color: var(--app-text-primary);
+  line-height: 1.4;
+}
+
+.resource-card__title span {
+  color: rgba(56, 189, 248, 0.96);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.resource-card__tag {
+  font-weight: 600;
+  background: rgba(124, 58, 237, 0.18);
+  color: rgba(63, 81, 181, 0.96);
+  border: none;
 }
 
 .resource-card__description {
   margin: 0;
-  color: var(--app-text-secondary);
-  flex: 1;
+  color: rgba(76, 81, 191, 0.7);
+  line-height: 1.7;
+}
+
+.resource-card__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .resource-card__meta {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem 1rem;
-  color: var(--app-text-secondary);
+  color: rgba(79, 70, 229, 0.65);
+  font-size: 0.95rem;
 }
 
 .resource-card__meta i {
@@ -727,13 +784,43 @@ watch(
 
 .resource-card__action {
   align-self: flex-start;
-  margin-top: auto;
+  width: 100%;
+}
+
+.resource-card__action :deep(.p-button) {
+  border-color: rgba(99, 102, 241, 0.5);
+  color: rgba(76, 81, 191, 0.96);
+  font-weight: 600;
+  transition: all 0.25s ease;
+}
+
+.resource-card__action :deep(.p-button:hover) {
+  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 14px 26px rgba(124, 58, 237, 0.28);
+}
+
+.resource-card:hover .resource-card__icon {
+  box-shadow: 0 22px 44px rgba(124, 58, 237, 0.32);
+}
+
+@media (min-width: 720px) {
+  .resource-card__footer {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .resource-card__action {
+    width: auto;
+  }
 }
 
 .community-card {
-  border: 1px solid var(--app-outline);
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(12px);
+  border: 1px solid rgba(99, 102, 241, 0.32);
+  background: linear-gradient(160deg, rgba(248, 250, 255, 0.94), rgba(224, 242, 254, 0.68));
+  box-shadow: 0 20px 46px rgba(99, 102, 241, 0.16);
 }
 
 .community-card__content {
@@ -747,12 +834,13 @@ watch(
   width: 4rem;
   height: 4rem;
   border-radius: 1.5rem;
-  background: rgba(79, 70, 229, 0.15);
-  color: var(--app-primary);
+  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  color: #fff;
   display: grid;
   place-items: center;
   font-size: 1.6rem;
   margin: 0 auto;
+  box-shadow: 0 18px 36px rgba(124, 58, 237, 0.28);
 }
 
 .community-card__content h3 {
@@ -767,8 +855,9 @@ watch(
 }
 
 .suggestion-card {
-  border: 1px solid var(--app-outline);
-  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(99, 102, 241, 0.32);
+  background: linear-gradient(160deg, rgba(248, 250, 255, 0.95), rgba(224, 242, 254, 0.74));
+  box-shadow: 0 20px 46px rgba(99, 102, 241, 0.17);
 }
 
 .resource-dialog {
@@ -780,14 +869,14 @@ watch(
 
 .resource-dialog__description {
   margin: 0;
-  color: var(--app-text-secondary);
+  color: rgba(79, 70, 229, 0.74);
 }
 
 
 .resource-dialog__viewer {
   width: 100%;
-  background: rgba(255, 255, 255, 0.4);
-  border: 1px solid var(--app-outline);
+  background: rgba(248, 250, 255, 0.92);
+  border: 1px solid rgba(99, 102, 241, 0.3);
   border-radius: 1rem;
   overflow: hidden;
   display: flex;
