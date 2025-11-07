@@ -179,7 +179,7 @@
                   icon="pi pi-external-link"
                   severity="primary"
                   outlined
-                  @click="abrirRecurso(contenido)"
+                  @click="abrirRecurso(contenido, $event)"
                 />
               </div>
             </template>
@@ -261,6 +261,42 @@
         </div>
       </section>
     </template>
+
+    <PvDialog
+      v-model:visible="recursoModalVisible"
+      modal
+      dismissableMask
+      :header="recursoSeleccionado ? recursoSeleccionado.titulo : 'Recurso externo'"
+      :style="{ width: 'min(90vw, 920px)' }"
+      :contentStyle="{ padding: '0' }"
+      @hide="cerrarRecurso"
+    >
+      <div v-if="recursoSeleccionado" class="resource-dialog">
+        <div v-if="recursoSeleccionado.descripcion" class="resource-dialog__description">
+          {{ recursoSeleccionado.descripcion }}
+        </div>
+        <div class="resource-dialog__viewer">
+          <template v-if="recursoEmbed && recursoEmbed.type === 'iframe'">
+            <iframe
+              class="resource-dialog__iframe"
+              :src="recursoEmbed.src"
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowfullscreen
+            />
+          </template>
+          <template v-else-if="recursoEmbed && recursoEmbed.type === 'image'">
+            <img :src="recursoEmbed.src" alt="Vista previa del recurso" class="resource-dialog__image" />
+          </template>
+          <template v-else>
+            <div class="resource-dialog__fallback">
+              <p>Este recurso se abrirá en una pestaña nueva.</p>
+              <PvButton label="Abrir recurso" icon="pi pi-external-link" @click="abrirRecursoEnNuevaPestana" />
+            </div>
+          </template>
+        </div>
+      </div>
+    </PvDialog>
   </div>
 </template>
 
@@ -282,6 +318,8 @@ const selectedTipo = ref<'todos' | 'infografia' | 'video'>('todos');
 const searchTerm = ref('');
 const selectedCategory = ref<string | null>(null);
 const enviandoSugerencia = ref(false);
+const recursoModalVisible = ref(false);
+const recursoSeleccionado = ref<Contenido | null>(null);
 
 const sugerencia = ref({ nombre: '', correo: '', texto: '' });
 
@@ -338,6 +376,16 @@ const filteredContenidos = computed(() => {
   });
 });
 
+type RecursoEmbed =
+  | { type: 'iframe'; src: string }
+  | { type: 'image'; src: string }
+  | { type: 'external'; src: string };
+
+const recursoEmbed = computed<RecursoEmbed | null>(() => {
+  if (!recursoSeleccionado.value) return null;
+  return obtenerEmbed(recursoSeleccionado.value.enlace);
+});
+
 const tipoLabel = (tipo: Contenido['tipo']) => {
   if (tipo === 'video') return 'Video';
   if (tipo === 'infografia') return 'Infografía';
@@ -377,8 +425,116 @@ function clearCategoryFilter() {
   selectedCategory.value = null;
 }
 
-function abrirRecurso(contenido: Contenido) {
-  window.open(contenido.enlace, '_blank', 'noopener');
+function abrirRecurso(contenido: Contenido, event?: MouseEvent) {
+  event?.preventDefault();
+  event?.stopPropagation();
+  recursoSeleccionado.value = contenido;
+  recursoModalVisible.value = true;
+}
+
+function cerrarRecurso() {
+  recursoModalVisible.value = false;
+  recursoSeleccionado.value = null;
+}
+
+function abrirRecursoEnNuevaPestana() {
+  if (!recursoSeleccionado.value) return;
+  window.open(recursoSeleccionado.value.enlace, '_blank', 'noopener');
+}
+
+function obtenerEmbed(enlace: string): RecursoEmbed {
+  try {
+    const url = new URL(enlace);
+    const hostname = url.hostname.replace(/^www\./, '');
+
+    if (hostname === 'youtu.be') {
+      const videoId = url.pathname.split('/')[1];
+      if (videoId) {
+        return {
+          type: 'iframe',
+          src: `https://www.youtube.com/embed/${videoId}`,
+        };
+      }
+    }
+
+    if (hostname.endsWith('youtube.com')) {
+      const videoId = url.searchParams.get('v') || extraerYoutubeIdDesdePath(url.pathname);
+      if (videoId) {
+        const params = new URLSearchParams();
+        if (url.searchParams.get('t')) {
+          params.set('start', convertirTiempoSegundos(url.searchParams.get('t')!));
+        }
+        const search = params.toString();
+        return {
+          type: 'iframe',
+          src: `https://www.youtube.com/embed/${videoId}${search ? `?${search}` : ''}`,
+        };
+      }
+    }
+
+    if (hostname.endsWith('drive.google.com')) {
+      const fileId = extraerGoogleDriveId(url.pathname, url.searchParams);
+      if (fileId) {
+        return { type: 'iframe', src: `https://drive.google.com/file/d/${fileId}/preview` };
+      }
+    }
+
+    if (esImagen(url.pathname)) {
+      return { type: 'image', src: enlace };
+    }
+
+    return { type: 'external', src: enlace };
+  } catch (error) {
+    return { type: 'external', src: enlace };
+  }
+}
+
+function extraerYoutubeIdDesdePath(pathname: string) {
+  if (pathname.startsWith('/embed/')) {
+    return pathname.split('/')[2];
+  }
+  if (pathname.startsWith('/shorts/')) {
+    return pathname.split('/')[2];
+  }
+  return null;
+}
+
+function convertirTiempoSegundos(valor: string) {
+  const segundosRegex = /^(\d+)$/;
+  const formatoRegex = /^(\d+h)?(\d+m)?(\d+s)?$/;
+
+  if (segundosRegex.test(valor)) {
+    return valor;
+  }
+
+  const coincidencia = formatoRegex.exec(valor);
+  if (!coincidencia) {
+    return '0';
+  }
+
+  const horas = coincidencia[1] ? parseInt(coincidencia[1].replace('h', ''), 10) : 0;
+  const minutos = coincidencia[2] ? parseInt(coincidencia[2].replace('m', ''), 10) : 0;
+  const segundos = coincidencia[3] ? parseInt(coincidencia[3].replace('s', ''), 10) : 0;
+
+  return String(horas * 3600 + minutos * 60 + segundos);
+}
+
+function extraerGoogleDriveId(pathname: string, searchParams: URLSearchParams) {
+  const match = pathname.match(/\/d\/([^/]+)/);
+  if (match?.[1]) {
+    return match[1];
+  }
+
+  const id = searchParams.get('id');
+  if (id) {
+    return id;
+  }
+
+  return null;
+}
+
+function esImagen(pathname: string) {
+  return /(\.png|\.jpe?g|\.gif|\.webp|\.svg)$/i.test(pathname);
 }
 
 async function enviarSugerencia() {
@@ -613,6 +769,52 @@ watch(
 .suggestion-card {
   border: 1px solid var(--app-outline);
   background: rgba(255, 255, 255, 0.92);
+}
+
+.resource-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+}
+
+.resource-dialog__description {
+  margin: 0;
+  color: var(--app-text-secondary);
+}
+
+
+.resource-dialog__viewer {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--app-outline);
+  border-radius: 1rem;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+}
+
+.resource-dialog__iframe {
+  width: 100%;
+  min-height: clamp(260px, 60vh, 540px);
+  border: 0;
+}
+
+.resource-dialog__image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.resource-dialog__fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
 }
 
 .fade-enter-active,
