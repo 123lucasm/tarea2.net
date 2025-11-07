@@ -17,6 +17,13 @@ const PORT = process.env.PORT || 3000;
 const distPath = path.join(__dirname, 'frontend', 'dist');
 const publicPath = path.join(__dirname, 'public');
 const isDistBuilt = fs.existsSync(distPath);
+const distIndexExists = fs.existsSync(path.join(distPath, 'index.html'));
+
+console.log('📁 Paths estáticos configurados:');
+console.log(`   distPath: ${distPath}`);
+console.log(`   publicPath: ${publicPath}`);
+console.log(`   distPath existe: ${isDistBuilt}`);
+console.log(`   dist/index.html existe: ${distIndexExists}`);
 
 // Conectar a MongoDB
 connectDB();
@@ -25,10 +32,11 @@ connectDB();
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-if (isDistBuilt) {
+if (isDistBuilt && distIndexExists) {
+  console.log('✅ Sirviendo assets del build de Vue desde frontend/dist');
   app.use(express.static(distPath));
 } else {
-  console.warn('⚠️  No se encontró el build de Vue. Sirviendo assets legacy desde /public');
+  console.warn('⚠️  No se encontró un build válido de Vue. Sirviendo assets legacy desde /public');
   app.use(express.static(publicPath));
 }
 
@@ -478,9 +486,11 @@ app.get('*', (req, res, next) => {
   }
 
   if (isDistBuilt) {
+    console.log('➡️  Respondiendo SPA desde frontend/dist/index.html');
     return res.sendFile(path.join(distPath, 'index.html'));
   }
 
+  console.log('➡️  Respondiendo SPA legado desde public/index.html');
   res.sendFile(path.join(publicPath, 'index.html'));
 });
 
