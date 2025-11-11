@@ -13,6 +13,7 @@ const Contenido = require('./models/Contenido');
 const Categoria = require('./models/Categoria');
 const Sugerencia = require('./models/Sugerencia');
 const Usuario = require('./models/Usuario');
+const Comentario = require('./models/Comentario');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -546,6 +547,81 @@ app.post('/api/usuarios/:id/historial/:contenidoId', async (req, res) => {
   } catch (error) {
     console.error('Error al agregar al historial:', error);
     res.status(500).json({ error: 'Error al agregar al historial' });
+  }
+});
+
+// ==================== COMENTARIOS ====================
+
+// GET - Comentarios por recurso
+app.get('/api/contenidos/:id/comentarios', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const comentarios = await Comentario.find({ recurso: id, aprobado: true })
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean();
+    res.json(comentarios);
+  } catch (error) {
+    console.error('Error al obtener comentarios:', error);
+    res.status(500).json({ error: 'Error al obtener los comentarios' });
+  }
+});
+
+// POST - Crear comentario
+app.post('/api/contenidos/:id/comentarios', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { autorId, texto } = req.body;
+
+    if (!autorId || !texto?.trim()) {
+      return res.status(400).json({ error: 'Autor y texto son requeridos' });
+    }
+
+    const [contenido, autor] = await Promise.all([
+      Contenido.findById(id),
+      Usuario.findById(autorId),
+    ]);
+
+    if (!contenido) {
+      return res.status(404).json({ error: 'Contenido no encontrado' });
+    }
+
+    if (!autor || !autor.activo) {
+      return res.status(403).json({ error: 'Usuario no autorizado' });
+    }
+
+    const nuevoComentario = await Comentario.create({
+      recurso: contenido._id,
+      autor: autor._id,
+      autorNombre: autor.nombre,
+      autorCorreo: autor.correo,
+      texto: texto.trim(),
+      aprobado: true,
+    });
+
+    res.status(201).json(nuevoComentario);
+  } catch (error) {
+    console.error('Error al crear comentario:', error);
+    res.status(500).json({ error: 'Error al crear el comentario' });
+  }
+});
+
+// DELETE - Eliminar comentario (soft delete)
+app.delete('/api/comentarios/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const comentario = await Comentario.findByIdAndUpdate(
+      id,
+      { aprobado: false },
+      { new: true }
+    );
+    if (!comentario) {
+      return res.status(404).json({ error: 'Comentario no encontrado' });
+    }
+    res.json({ mensaje: 'Comentario eliminado', comentario });
+  } catch (error) {
+    console.error('Error al eliminar comentario:', error);
+    res.status(500).json({ error: 'Error al eliminar el comentario' });
   }
 });
 

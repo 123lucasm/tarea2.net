@@ -16,6 +16,17 @@ export type Contenido = {
   enlace: string;
 };
 
+export type Comentario = {
+  _id: string;
+  recurso: string;
+  autor: string;
+  autorNombre: string;
+  autorCorreo: string;
+  texto: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type CategoriaPayload = Pick<Categoria, 'nombre' | 'descripcion'>;
 
 export type ContenidoPayload = Pick<Contenido, 'titulo' | 'tema' | 'tipo' | 'categoria' | 'descripcion' | 'enlace'>;
@@ -37,14 +48,22 @@ export const useCatalogStore = defineStore('catalog', {
     categorias: [] as Categoria[],
     contenidos: [] as Contenido[],
     sugerencias: [] as Sugerencia[],
+    comentariosPorRecurso: new Map<string, Comentario[]>(),
     categoriasStatus: 'idle' as LoadingState,
     contenidosStatus: 'idle' as LoadingState,
     sugerenciasStatus: 'idle' as LoadingState,
+    comentariosStatus: new Map<string, LoadingState>(),
   }),
   getters: {
     totalCategorias: (state) => state.categorias.length,
     totalContenidos: (state) => state.contenidos.length,
     totalSugerencias: (state) => state.sugerencias.length,
+    getComentariosPorRecurso: (state) => {
+      return (recursoId: string) => state.comentariosPorRecurso.get(recursoId) ?? [];
+    },
+    getComentariosStatus: (state) => {
+      return (recursoId: string) => state.comentariosStatus.get(recursoId) ?? 'idle';
+    },
   },
   actions: {
     async fetchCategorias() {
@@ -183,6 +202,49 @@ export const useCatalogStore = defineStore('catalog', {
         throw new Error(data.error || 'No se pudo eliminar la sugerencia');
       }
       this.sugerencias = this.sugerencias.filter((sugerencia) => sugerencia._id !== id);
+    },
+    async fetchComentarios(recursoId: string) {
+      if (this.comentariosStatus.get(recursoId) === 'loading') return;
+      this.comentariosStatus = new Map(this.comentariosStatus).set(recursoId, 'loading');
+      try {
+        const response = await fetch(`/api/contenidos/${recursoId}/comentarios`);
+        if (!response.ok) throw new Error('No se pudieron cargar los comentarios');
+        const comentarios = (await response.json()) as Comentario[];
+        this.comentariosPorRecurso = new Map(this.comentariosPorRecurso).set(recursoId, comentarios);
+        this.comentariosStatus = new Map(this.comentariosStatus).set(recursoId, 'success');
+      } catch (error) {
+        console.error(error);
+        this.comentariosStatus = new Map(this.comentariosStatus).set(recursoId, 'error');
+      }
+    },
+    async crearComentario(recursoId: string, payload: { autorId: string; texto: string }) {
+      const response = await fetch(`/api/contenidos/${recursoId}/comentarios`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudo crear el comentario');
+      }
+      const existentes = this.comentariosPorRecurso.get(recursoId) ?? [];
+      this.comentariosPorRecurso = new Map(this.comentariosPorRecurso).set(recursoId, [
+        data as Comentario,
+        ...existentes,
+      ]);
+      return data as Comentario;
+    },
+    async eliminarComentario(id: string, recursoId: string) {
+      const response = await fetch(`/api/comentarios/${id}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudo eliminar el comentario');
+      }
+      const existentes = this.comentariosPorRecurso.get(recursoId) ?? [];
+      this.comentariosPorRecurso = new Map(this.comentariosPorRecurso).set(
+        recursoId,
+        existentes.filter((comentario) => comentario._id !== id)
+      );
     },
   },
 });

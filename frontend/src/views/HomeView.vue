@@ -304,6 +304,73 @@
             </div>
           </template>
         </div>
+        <div class="resource-comments">
+          <div class="resource-comments__header">
+            <h3>Comentarios</h3>
+            <PvButton
+              v-if="recursoSeleccionado"
+              icon="pi pi-refresh"
+              text
+              severity="secondary"
+              :loading="comentariosCargando"
+              @click="catalogStore.fetchComentarios(recursoSeleccionado._id)"
+            />
+          </div>
+
+          <div v-if="puedeComentar" class="comment-form">
+            <PvTextarea
+              v-model="comentarioTexto"
+              rows="3"
+              auto-resize
+              placeholder="Comparte tu opinión o una pregunta sobre este recurso..."
+              :maxlength="800"
+            />
+            <div class="comment-form__actions">
+              <small class="text-600">{{ comentarioTexto.length }}/800 caracteres</small>
+              <PvButton
+                label="Publicar comentario"
+                icon="pi pi-send"
+                size="small"
+                :loading="enviandoComentario"
+                @click="enviarComentario"
+              />
+            </div>
+            <small v-if="comentarioError" class="comment-form__error">{{ comentarioError }}</small>
+          </div>
+          <div v-else class="comment-login">
+            <p class="m-0">Inicia sesión para dejar un comentario.</p>
+          </div>
+
+          <div v-if="comentariosCargando" class="comment-loading">
+            <i class="pi pi-spin pi-spinner" />
+            <span>Cargando comentarios...</span>
+          </div>
+          <div v-else-if="comentariosError" class="comment-error text-600">
+            No pudimos cargar los comentarios. Intenta nuevamente.
+          </div>
+          <div v-else-if="comentariosActuales.length" class="comment-list">
+            <article v-for="comentario in comentariosActuales" :key="comentario._id" class="comment-item">
+              <header class="comment-item__header">
+                <div>
+                  <strong>{{ comentario.autorNombre }}</strong>
+                  <span>{{ formatFechaComentario(comentario.createdAt) }}</span>
+                </div>
+                <PvButton
+                  v-if="authStore.isAdmin"
+                  icon="pi pi-trash"
+                  text
+                  severity="danger"
+                  aria-label="Eliminar comentario"
+                  @click="eliminarComentario(comentario._id)"
+                />
+              </header>
+              <p class="comment-item__text">{{ comentario.texto }}</p>
+            </article>
+          </div>
+          <div v-else class="comment-empty text-600">
+            Aún no hay comentarios. ¡Sé el primero en opinar!
+          </div>
+        </div>
       </div>
     </PvDialog>
   </div>
@@ -329,6 +396,9 @@ const selectedCategory = ref<string | null>(null);
 const enviandoSugerencia = ref(false);
 const recursoModalVisible = ref(false);
 const recursoSeleccionado = ref<Contenido | null>(null);
+const comentarioTexto = ref('');
+const enviandoComentario = ref(false);
+const comentarioError = ref('');
 
 const sugerencia = ref({ nombre: '', correo: '', texto: '' });
 
@@ -395,6 +465,20 @@ const recursoEmbed = computed<RecursoEmbed | null>(() => {
   return obtenerEmbed(recursoSeleccionado.value.enlace);
 });
 
+const comentariosActuales = computed(() => {
+  if (!recursoSeleccionado.value) return [];
+  return catalogStore.getComentariosPorRecurso(recursoSeleccionado.value._id);
+});
+
+const comentariosStatus = computed(() => {
+  if (!recursoSeleccionado.value) return 'idle';
+  return catalogStore.getComentariosStatus(recursoSeleccionado.value._id);
+});
+
+const comentariosCargando = computed(() => comentariosStatus.value === 'loading');
+const comentariosError = computed(() => comentariosStatus.value === 'error');
+const puedeComentar = computed(() => authStore.isAuthenticated);
+
 const tipoLabel = (tipo: Contenido['tipo']) => {
   if (tipo === 'video') return 'Video';
   if (tipo === 'infografia') return 'Infografía';
@@ -439,11 +523,16 @@ function abrirRecurso(contenido: Contenido, event?: MouseEvent) {
   event?.stopPropagation();
   recursoSeleccionado.value = contenido;
   recursoModalVisible.value = true;
+  comentarioTexto.value = '';
+  comentarioError.value = '';
+  comentariosStatus.value === 'idle' && catalogStore.fetchComentarios(contenido._id);
 }
 
 function cerrarRecurso() {
   recursoModalVisible.value = false;
   recursoSeleccionado.value = null;
+  comentarioTexto.value = '';
+  comentarioError.value = '';
 }
 
 function abrirRecursoEnNuevaPestana() {
@@ -546,6 +635,16 @@ function esImagen(pathname: string) {
   return /(\.png|\.jpe?g|\.gif|\.webp|\.svg)$/i.test(pathname);
 }
 
+function formatFechaComentario(fecha: string) {
+  return new Date(fecha).toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 async function enviarSugerencia() {
   if (!sugerencia.value.texto.trim()) {
     toast.add({ severity: 'warn', summary: 'Completa la sugerencia', life: 3000 });
@@ -579,6 +678,54 @@ async function enviarSugerencia() {
     });
   } finally {
     enviandoSugerencia.value = false;
+  }
+}
+
+async function enviarComentario() {
+  if (!recursoSeleccionado.value) return;
+  if (!authStore.isAuthenticated || !authStore.user?._id) {
+    toast.add({ severity: 'warn', summary: 'Inicia sesión para comentar', life: 3000 });
+    return;
+  }
+  const texto = comentarioTexto.value.trim();
+  if (texto.length < 3) {
+    comentarioError.value = 'El comentario debe tener al menos 3 caracteres.';
+    return;
+  }
+  if (texto.length > 800) {
+    comentarioError.value = 'El comentario no puede exceder 800 caracteres.';
+    return;
+  }
+
+  try {
+    comentarioError.value = '';
+    enviandoComentario.value = true;
+    await catalogStore.crearComentario(recursoSeleccionado.value._id, {
+      autorId: authStore.user._id,
+      texto,
+    });
+    comentarioTexto.value = '';
+    toast.add({ severity: 'success', summary: 'Comentario publicado', life: 3000 });
+  } catch (error) {
+    comentarioError.value =
+      error instanceof Error ? error.message : 'No se pudo publicar el comentario';
+  } finally {
+    enviandoComentario.value = false;
+  }
+}
+
+async function eliminarComentario(comentarioId: string) {
+  if (!authStore.isAdmin || !recursoSeleccionado.value) return;
+  try {
+    await catalogStore.eliminarComentario(comentarioId, recursoSeleccionado.value._id);
+    toast.add({ severity: 'success', summary: 'Comentario eliminado', life: 3000 });
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error instanceof Error ? error.message : 'No se pudo eliminar el comentario',
+      life: 4000,
+    });
   }
 }
 
@@ -916,6 +1063,103 @@ section.surface-card {
   gap: 1rem;
   padding: 2rem;
   text-align: center;
+}
+
+.resource-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.resource-comments__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.resource-comments__header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--app-text-primary);
+}
+
+.comment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: rgba(248, 250, 255, 0.9);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 1rem;
+  padding: 1rem;
+}
+
+.comment-form__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.comment-form__error {
+  color: var(--p-red-500);
+}
+
+.comment-login {
+  padding: 1rem;
+  border-radius: 1rem;
+  border: 1px dashed rgba(99, 102, 241, 0.35);
+  background: rgba(248, 250, 255, 0.7);
+}
+
+.comment-loading,
+.comment-error,
+.comment-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  background: rgba(248, 250, 255, 0.75);
+}
+
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.comment-item {
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 1rem;
+  padding: 0.9rem 1rem;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.comment-item__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.comment-item__header strong {
+  display: block;
+  color: var(--app-text-primary);
+}
+
+.comment-item__header span {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--app-text-secondary);
+}
+
+.comment-item__text {
+  margin: 0;
+  color: var(--app-text-primary);
+  line-height: 1.6;
 }
 
 .fade-enter-active,
