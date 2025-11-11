@@ -58,12 +58,34 @@ onMounted(() => {
   authStore.hydrate();
 });
 
+function smoothScrollTo(sectionId: string) {
+  requestAnimationFrame(() => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+}
+
+function navigateToSection(sectionId: string) {
+  const targetHash = `#${sectionId}`;
+
+  if (router.currentRoute.value.path !== '/') {
+    router.push({ path: '/', hash: targetHash }).then(() => smoothScrollTo(sectionId));
+    return;
+  }
+
+  router.push({ hash: targetHash }).finally(() => smoothScrollTo(sectionId));
+}
+
 const menuItems = computed(() => {
   const items = [
     {
       label: 'Inicio',
       icon: 'pi pi-home',
-      command: () => router.push('/'),
+      command: () => {
+        void router.push('/');
+      },
     },
   ];
 
@@ -72,22 +94,53 @@ const menuItems = computed(() => {
       {
         label: 'Panel',
         icon: 'pi pi-chart-bar',
-        command: () => router.push('/admin'),
+        command: () => {
+          void router.push('/admin');
+        },
       },
       {
         label: 'Categorías',
         icon: 'pi pi-tags',
-        command: () => router.push('/admin/categorias'),
+        command: () => {
+          void router.push('/admin/categorias');
+        },
       },
       {
         label: 'Contenidos',
         icon: 'pi pi-book',
-        command: () => router.push('/admin/contenidos'),
+        command: () => {
+          void router.push('/admin/contenidos');
+        },
       },
       {
         label: 'Sugerencias',
         icon: 'pi pi-comments',
-        command: () => router.push('/admin/sugerencias'),
+        command: () => {
+          void router.push('/admin/sugerencias');
+        },
+      }
+    );
+  } else {
+    items.push(
+      {
+        label: 'Categorías',
+        icon: 'pi pi-tags',
+        command: () => navigateToSection('categorias'),
+      },
+      {
+        label: 'Recursos',
+        icon: 'pi pi-book',
+        command: () => navigateToSection('contenidos'),
+      },
+      {
+        label: 'Comunidad',
+        icon: 'pi pi-users',
+        command: () => navigateToSection('comunidad'),
+      },
+      {
+        label: 'Sugerencias',
+        icon: 'pi pi-envelope',
+        command: () => navigateToSection('sugerencias'),
       }
     );
   }

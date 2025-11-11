@@ -68,11 +68,13 @@
       <div v-if="categorias.length" class="mb-4">
         <PvCarousel
           :value="categorias"
-          circular
+          :circular="carouselCircular"
+          :show-navigators="carouselShowNavigators"
+          :show-indicators="carouselShowIndicators"
           :num-visible="3"
           :num-scroll="1"
           :responsive-options="carouselResponsiveOptions"
-          :autoplay-interval="5000"
+          :autoplay-interval="carouselAutoplayInterval"
         >
           <template #item="{ data }">
             <div class="p-2">
@@ -218,7 +220,13 @@
                     Únete al servidor oficial para acceder a canales temáticos, sesiones de estudio en vivo y mentorías
                     con estudiantes avanzados.
                   </p>
-                  <PvButton label="Entrar al servidor" icon="pi pi-sign-in" severity="primary" outlined />
+                  <PvButton
+                    label="Entrar al servidor"
+                    icon="pi pi-sign-in"
+                    severity="primary"
+                    outlined
+                    @click="abrirDiscord"
+                  />
                 </div>
               </template>
             </PvCard>
@@ -436,6 +444,11 @@ const statistics = computed(() => [
 
 const showPublicSections = computed(() => !authStore.isAdmin);
 
+const carouselCircular = computed(() => categorias.value.length > 3);
+const carouselShowNavigators = computed(() => categorias.value.length > 3);
+const carouselShowIndicators = computed(() => categorias.value.length > 1);
+const carouselAutoplayInterval = computed(() => (categorias.value.length > 1 ? 5000 : 0));
+
 const filteredContenidos = computed(() => {
   const term = searchTerm.value.trim().toLowerCase();
   const tipo = selectedTipo.value;
@@ -502,6 +515,10 @@ function scrollToSection(id: string) {
   if (element) {
     element.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
+}
+
+function abrirDiscord() {
+  window.open('https://discord.gg/Uq3362QY', '_blank', 'noopener');
 }
 
 function toggleAllCategories() {

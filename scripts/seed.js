@@ -1,5 +1,6 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 const Contenido = require('../models/Contenido');
 const Categoria = require('../models/Categoria');
 const Usuario = require('../models/Usuario');
@@ -97,6 +98,12 @@ const usuariosIniciales = [
     nombre: 'Ana López',
     correo: 'ana.lopez@universidad.edu',
     contraseña: 'password123'
+  },
+  {
+    nombre: 'Administrador',
+    correo: 'admin@admin.com',
+    contraseña: '12345678',
+    rol: 'admin'
   }
 ];
 
@@ -118,8 +125,14 @@ const seedDatabase = async () => {
     const contenidosCreados = await Contenido.insertMany(contenidosIniciales);
     console.log(`✅ ${contenidosCreados.length} contenidos creados`);
 
-    // Insertar usuarios
-    const usuariosCreados = await Usuario.insertMany(usuariosIniciales);
+    // Insertar usuarios con contraseñas hasheadas
+    const usuariosConHash = await Promise.all(
+      usuariosIniciales.map(async (usuario) => ({
+        ...usuario,
+        contraseña: await bcrypt.hash(usuario.contraseña, 10),
+      }))
+    );
+    const usuariosCreados = await Usuario.insertMany(usuariosConHash);
     console.log(`✅ ${usuariosCreados.length} usuarios creados`);
 
     console.log('\n🎉 ¡Seed completado exitosamente!');

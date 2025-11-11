@@ -423,8 +423,8 @@ app.post('/api/usuarios/login', async (req, res) => {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
     
-    // Verificar contraseña (comparación simple - en producción usa bcrypt)
-    if (usuario.contraseña !== contraseña) {
+    const contraseñaValida = await usuario.verificarContraseña(contraseña);
+    if (!contraseñaValida) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
     

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const usuarioSchema = new mongoose.Schema({
   nombre: {
@@ -70,6 +71,54 @@ usuarioSchema.set('toJSON', {
     return ret;
   }
 });
+
+// Hash de contraseña antes de guardar
+usuarioSchema.pre('save', async function(next) {
+  if (!this.isModified('contraseña')) {
+    return next();
+  }
+
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.contraseña = await bcrypt.hash(this.contraseña, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Hash de contraseña en actualizaciones findOneAndUpdate
+usuarioSchema.pre('findOneAndUpdate', async function(next) {
+  const update = this.getUpdate();
+  if (!update) {
+    return next();
+  }
+
+  const contraseñaEnUpdate = update.contraseña || (update.$set && update.$set.contraseña);
+  if (!contraseñaEnUpdate) {
+    return next();
+  }
+
+  try {
+    const salt = await bcrypt.genSalt(10);
+    const contraseñaHasheada = await bcrypt.hash(contraseñaEnUpdate, salt);
+
+    if (update.contraseña) {
+      update.contraseña = contraseñaHasheada;
+    } else {
+      update.$set.contraseña = contraseñaHasheada;
+    }
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Método para comparar contraseñas
+usuarioSchema.methods.verificarContraseña = function(contraseña) {
+  return bcrypt.compare(contraseña, this.contraseña);
+};
 
 // Método para agregar contenido a favoritos
 usuarioSchema.methods.agregarFavorito = async function(contenidoId) {
