@@ -22,6 +22,7 @@ import Textarea from 'primevue/textarea';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Dropdown from 'primevue/dropdown';
+import SelectButton from 'primevue/selectbutton';
 
 import router from '@/router';
 import App from './App.vue';
@@ -64,5 +65,6 @@ app.component('PvTextarea', Textarea);
 app.component('PvDataTable', DataTable);
 app.component('PvColumn', Column);
 app.component('PvDropdown', Dropdown);
+app.component('PvSelectButton', SelectButton);
 
 app.mount('#app');

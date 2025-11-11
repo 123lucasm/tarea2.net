@@ -78,6 +78,15 @@
               required
             />
           </div>
+          <div v-if="esInfografia" class="col-12 flex flex-column gap-2">
+            <label class="text-sm text-600">Origen de la infografía</label>
+            <PvSelectButton
+              v-model="modoInfografia"
+              :options="modoInfografiaOptions"
+              option-label="label"
+              option-value="value"
+            />
+          </div>
           <div class="col-12 md:col-6 flex flex-column gap-2">
             <label for="contenido-categoria" class="text-sm text-600">Categoría</label>
             <PvDropdown
@@ -101,14 +110,43 @@
               placeholder="Describe el recurso para que sea fácil de identificar"
             />
           </div>
-          <div class="col-12 flex flex-column gap-2">
-            <label for="contenido-enlace" class="text-sm text-600">Enlace o archivo</label>
+          <div v-if="!esInfografia || modoInfografia === 'url'" class="col-12 flex flex-column gap-2">
+            <label for="contenido-enlace" class="text-sm text-600">Enlace</label>
             <PvInputText
               id="contenido-enlace"
               v-model="contenidoForm.enlace"
-              required
-              placeholder="URL del recurso o ruta del archivo"
+              :required="!esInfografia || modoInfografia === 'url'"
+              placeholder="https://..."
             />
+          </div>
+          <div v-else class="col-12 flex flex-column gap-2">
+            <label class="text-sm text-600" for="contenido-archivo">Archivo de infografía</label>
+            <input
+              id="contenido-archivo"
+              ref="inputArchivoInfografia"
+              type="file"
+              accept="image/*"
+              @change="onArchivoInfografiaSeleccionado"
+            />
+            <small class="text-600">Formatos de imagen hasta 10MB. Se almacenará la URL segura de Cloudinary.</small>
+            <div v-if="archivoInfografia" class="text-600">
+              Archivo seleccionado: <span class="font-semibold">{{ archivoInfografia?.name }}</span>
+            </div>
+            <div v-if="modoInfografia === 'upload' && contenidoForm.enlace" class="cloudinary-url">
+              URL generada: <a :href="contenidoForm.enlace" target="_blank" rel="noopener">{{ contenidoForm.enlace }}</a>
+            </div>
+            <div class="flex gap-2">
+              <PvButton
+                type="button"
+                label="Limpiar archivo"
+                severity="secondary"
+                text
+                @click="limpiarArchivoInfografia"
+              />
+            </div>
+            <div v-if="subiendoInfografia" class="text-600 flex align-items-center gap-2">
+              <i class="pi pi-spin pi-spinner" /> Subiendo infografía...
+            </div>
           </div>
           <div class="col-12">
             <PvButton type="submit" label="Publicar recurso" icon="pi pi-upload" :loading="enviandoContenido" />
@@ -152,7 +190,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 
@@ -178,6 +216,14 @@ const contenidoForm = reactive<ContenidoPayload>({
 
 const enviandoCategoria = ref(false);
 const enviandoContenido = ref(false);
+const modoInfografia = ref<'url' | 'upload'>('url');
+const modoInfografiaOptions = [
+  { label: 'URL externa', value: 'url' },
+  { label: 'Subir archivo', value: 'upload' },
+];
+const archivoInfografia = ref<File | null>(null);
+const subiendoInfografia = ref(false);
+const inputArchivoInfografia = ref<HTMLInputElement | null>(null);
 
 const tipoOptions = [
   { label: 'Infografía', value: 'infografia' },
@@ -185,6 +231,7 @@ const tipoOptions = [
 ];
 
 const categoriasOptions = computed(() => catalogStore.categorias);
+const esInfografia = computed(() => contenidoForm.tipo === 'infografia');
 
 const statistics = computed(() => [
   { label: 'Contenidos publicados', value: catalogStore.totalContenidos, icon: 'pi-book' },
@@ -216,6 +263,27 @@ const managementLinks = computed(() => [
   },
 ]);
 
+watch(
+  () => contenidoForm.tipo,
+  (tipo) => {
+    if (tipo !== 'infografia') {
+      modoInfografia.value = 'url';
+      limpiarArchivoInfografia();
+    } else {
+      modoInfografia.value = 'url';
+      contenidoForm.enlace = '';
+    }
+  }
+);
+
+watch(modoInfografia, (modo) => {
+  if (modo === 'url') {
+    limpiarArchivoInfografia();
+  } else {
+    contenidoForm.enlace = '';
+  }
+});
+
 async function crearCategoria() {
   if (!categoriaForm.nombre.trim() || !categoriaForm.descripcion.trim()) {
     toast.add({ severity: 'warn', summary: 'Completa todos los campos', life: 3000 });
@@ -243,22 +311,41 @@ async function crearCategoria() {
 }
 
 async function crearContenido() {
-  const campos = ['titulo', 'tema', 'tipo', 'categoria', 'descripcion', 'enlace'] as const;
-  const vacios = campos.some((campo) => !(contenidoForm[campo] as string)?.toString().trim());
-  if (vacios) {
-    toast.add({ severity: 'warn', summary: 'Completa todos los campos', life: 3000 });
+  const camposBase = ['titulo', 'tema', 'tipo', 'categoria', 'descripcion'] as const;
+  const vaciosBase = camposBase.some((campo) => !(contenidoForm[campo] as string)?.toString().trim());
+  if (vaciosBase) {
+    toast.add({ severity: 'warn', summary: 'Completa todos los campos obligatorios', life: 3000 });
     return;
+  }
+
+  if (!esInfografia.value || modoInfografia.value === 'url') {
+    if (!contenidoForm.enlace.trim()) {
+      toast.add({ severity: 'warn', summary: 'Ingresa el enlace del recurso', life: 3000 });
+      return;
+    }
   }
 
   try {
     enviandoContenido.value = true;
+    let enlaceFinal = contenidoForm.enlace.trim();
+
+    if (esInfografia.value && modoInfografia.value === 'upload') {
+      if (!archivoInfografia.value) {
+        toast.add({ severity: 'warn', summary: 'Selecciona un archivo de infografía', life: 3000 });
+        return;
+      }
+
+      enlaceFinal = await subirInfografiaArchivo(archivoInfografia.value);
+      contenidoForm.enlace = enlaceFinal;
+    }
+
     await catalogStore.createContenido({
       titulo: contenidoForm.titulo.trim(),
       tema: contenidoForm.tema.trim(),
       tipo: contenidoForm.tipo,
       categoria: contenidoForm.categoria,
       descripcion: contenidoForm.descripcion.trim(),
-      enlace: contenidoForm.enlace.trim(),
+      enlace: enlaceFinal,
     });
     contenidoForm.titulo = '';
     contenidoForm.tema = '';
@@ -266,6 +353,8 @@ async function crearContenido() {
     contenidoForm.categoria = '';
     contenidoForm.descripcion = '';
     contenidoForm.enlace = '';
+    modoInfografia.value = 'url';
+    limpiarArchivoInfografia();
     toast.add({ severity: 'success', summary: 'Recurso publicado', life: 3000 });
   } catch (error) {
     toast.add({
@@ -276,6 +365,51 @@ async function crearContenido() {
     });
   } finally {
     enviandoContenido.value = false;
+  }
+}
+
+function onArchivoInfografiaSeleccionado(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const [file] = input.files || [];
+  if (!file) {
+    archivoInfografia.value = null;
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    toast.add({ severity: 'warn', summary: 'El archivo excede 10MB', life: 3000 });
+    input.value = '';
+    return;
+  }
+  archivoInfografia.value = file;
+}
+
+function limpiarArchivoInfografia() {
+  archivoInfografia.value = null;
+  if (inputArchivoInfografia.value) {
+    inputArchivoInfografia.value.value = '';
+  }
+  if (modoInfografia.value === 'upload') {
+    contenidoForm.enlace = '';
+  }
+}
+
+async function subirInfografiaArchivo(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  subiendoInfografia.value = true;
+  try {
+    const response = await fetch('/api/uploads/infografia', {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'No se pudo subir la infografía');
+    }
+    return data.url as string;
+  } finally {
+    subiendoInfografia.value = false;
   }
 }
 
@@ -336,6 +470,12 @@ onMounted(() => {
 
 label {
   font-weight: 600;
+}
+
+.cloudinary-url {
+  font-size: 0.85rem;
+  color: var(--app-primary);
+  word-break: break-all;
 }
 </style>
 

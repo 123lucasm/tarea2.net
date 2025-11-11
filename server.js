@@ -4,7 +4,9 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const multer = require('multer');
 const connectDB = require('./config/database');
+const cloudinary = require('./config/cloudinary');
 
 // Modelos
 const Contenido = require('./models/Contenido');
@@ -18,6 +20,10 @@ const distPath = path.join(__dirname, 'frontend', 'dist');
 const publicPath = path.join(__dirname, 'public');
 const isDistBuilt = fs.existsSync(distPath);
 const distIndexExists = fs.existsSync(path.join(distPath, 'index.html'));
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+});
 
 console.log('📁 Paths estáticos configurados:');
 console.log(`   distPath: ${distPath}`);
@@ -267,6 +273,45 @@ app.delete('/api/sugerencias/:id', async (req, res) => {
   } catch (error) {
     console.error('Error al eliminar sugerencia:', error);
     res.status(500).json({ error: 'Error al eliminar la sugerencia' });
+  }
+});
+
+// ==================== UPLOADS ====================
+
+app.post('/api/uploads/infografia', upload.single('file'), async (req, res) => {
+  try {
+    if (!cloudinary.config().cloud_name) {
+      return res.status(503).json({ error: 'Servicio de almacenamiento no disponible' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'Archivo requerido' });
+    }
+
+    const uploadResult = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { folder: 'equilibrio-universitario/infografias', resource_type: 'image' },
+        (error, result) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(result);
+          }
+        }
+      );
+
+      stream.end(req.file.buffer);
+    });
+
+    res.json({
+      url: uploadResult.secure_url,
+      publicId: uploadResult.public_id,
+      bytes: uploadResult.bytes,
+      format: uploadResult.format,
+    });
+  } catch (error) {
+    console.error('Error al subir infografía:', error);
+    res.status(500).json({ error: 'No se pudo subir la infografía' });
   }
 });
 
