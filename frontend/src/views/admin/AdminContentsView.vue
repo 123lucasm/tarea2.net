@@ -175,17 +175,24 @@ const subiendoInfografiaEdicion = ref(false);
 const tipoOptions = [
   { label: 'Infografía', value: 'infografia' },
   { label: 'Video', value: 'video' },
+  { label: 'Herramienta', value: 'herramienta' },
 ];
 
 const categoriasOptions = computed(() => catalogStore.categorias);
 const esInfografiaEdicion = computed(() => formEdit.tipo === 'infografia');
 
 function tipoLabel(tipo: Contenido['tipo']) {
-  return tipo === 'video' ? 'Video' : tipo === 'infografia' ? 'Infografía' : tipo;
+  if (tipo === 'video') return 'Video';
+  if (tipo === 'infografia') return 'Infografía';
+  if (tipo === 'herramienta') return 'Herramienta';
+  return tipo;
 }
 
 function tipoSeverity(tipo: Contenido['tipo']) {
-  return tipo === 'video' ? 'danger' : tipo === 'infografia' ? 'info' : 'secondary';
+  if (tipo === 'video') return 'danger';
+  if (tipo === 'infografia') return 'info';
+  if (tipo === 'herramienta') return 'success';
+  return 'secondary';
 }
 
 function abrirEdicion(contenido: Contenido) {

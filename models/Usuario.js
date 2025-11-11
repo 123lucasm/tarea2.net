@@ -24,7 +24,7 @@ const usuarioSchema = new mongoose.Schema({
   },
   rol: {
     type: String,
-    enum: ['admin', 'estudiante'],
+    enum: ['admin', 'admin_t', 'estudiante'],
     default: 'estudiante'
   },
   rolSolicitado: {

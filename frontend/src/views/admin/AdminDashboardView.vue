@@ -8,7 +8,7 @@
               <h1 class="text-3xl font-semibold mb-1">Panel de administración</h1>
               <p class="text-600 m-0">Gestiona categorías, recursos y sugerencias desde un solo lugar.</p>
             </div>
-            <PvButton label="Ir al sitio público" icon="pi pi-home" outlined @click="router.push('/')" />
+            <PvButton label="Ir al Inicio" icon="pi pi-home" outlined @click="router.push('/')" />
           </div>
 
           <div class="grid">
@@ -187,7 +187,7 @@
       </section>
     </div>
 
-    <div class="col-12">
+    <div v-if="esSuperAdmin" class="col-12">
       <section class="surface-card border-round-2xl shadow-2 p-4 lg:p-5">
         <div class="flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
           <div>
@@ -199,12 +199,12 @@
             icon="pi pi-refresh"
             severity="secondary"
             text
-            :loading="cargandoSolicitudesAdmin"
+            :loading="solicitudesCargando"
             @click="fetchSolicitudesAdmin"
           />
         </div>
 
-        <div v-if="cargandoSolicitudesAdmin" class="flex align-items-center gap-2 text-600">
+        <div v-if="solicitudesCargando" class="flex align-items-center gap-2 text-600">
           <i class="pi pi-spin pi-spinner" /> Cargando solicitudes...
         </div>
 
@@ -226,6 +226,14 @@
               <template #footer>
                 <div class="flex justify-content-end gap-2">
                   <PvButton
+                    label="Eliminar solicitud"
+                    icon="pi pi-times"
+                    severity="danger"
+                    text
+                    :loading="cancelandoSolicitud === usuario._id"
+                    @click="cancelarSolicitudAdmin(usuario._id)"
+                  />
+                  <PvButton
                     label="Aprobar"
                     icon="pi pi-check"
                     :loading="aprobandoSolicitud === usuario._id"
@@ -243,6 +251,7 @@
       </section>
     </div>
   </div>
+
 </template>
 
 <script setup lang="ts">
@@ -250,22 +259,13 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 
-import {
-  useCatalogStore,
-  type CategoriaPayload,
-  type ContenidoPayload,
-} from '@/stores/catalog';
-
-type SolicitudAdmin = {
-  _id: string;
-  nombre: string;
-  correo: string;
-  createdAt: string;
-};
+import { useCatalogStore, type CategoriaPayload, type ContenidoPayload } from '@/stores/catalog';
+import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
 const toast = useToast();
 const catalogStore = useCatalogStore();
+const authStore = useAuthStore();
 
 const categoriaForm = reactive<CategoriaPayload>({ nombre: '', descripcion: '' });
 const contenidoForm = reactive<ContenidoPayload>({
@@ -287,17 +287,21 @@ const modoInfografiaOptions = [
 const archivoInfografia = ref<File | null>(null);
 const subiendoInfografia = ref(false);
 const inputArchivoInfografia = ref<HTMLInputElement | null>(null);
-const solicitudesAdmin = ref<SolicitudAdmin[]>([]);
-const cargandoSolicitudesAdmin = ref(false);
 const aprobandoSolicitud = ref<string | null>(null);
+const cancelandoSolicitud = ref<string | null>(null);
 
 const tipoOptions = [
   { label: 'Infografía', value: 'infografia' },
   { label: 'Video', value: 'video' },
+  { label: 'Herramienta', value: 'herramienta' },
 ];
 
 const categoriasOptions = computed(() => catalogStore.categorias);
 const esInfografia = computed(() => contenidoForm.tipo === 'infografia');
+const esSuperAdmin = computed(() => authStore.isSuperAdmin);
+const solicitudesAdmin = computed(() => (esSuperAdmin.value ? catalogStore.solicitudesAdmin : []));
+const solicitudesStatus = computed(() => catalogStore.solicitudesAdminStatus);
+const solicitudesCargando = computed(() => esSuperAdmin.value && solicitudesStatus.value === 'loading');
 
 const statistics = computed(() => [
   { label: 'Contenidos publicados', value: catalogStore.totalContenidos, icon: 'pi-book' },
@@ -480,28 +484,32 @@ async function subirInfografiaArchivo(file: File) {
 }
 
 async function fetchSolicitudesAdmin() {
-  if (cargandoSolicitudesAdmin.value) return;
-  cargandoSolicitudesAdmin.value = true;
+  if (!esSuperAdmin.value) return;
+  await catalogStore.fetchSolicitudesAdmin(true);
+}
+
+async function cancelarSolicitudAdmin(id: string) {
+  if (!esSuperAdmin.value) return;
+  if (cancelandoSolicitud.value) return;
+  cancelandoSolicitud.value = id;
   try {
-    const response = await fetch('/api/usuarios/admin/pendientes');
-    if (!response.ok) {
-      throw new Error('No se pudieron obtener las solicitudes');
-    }
-    solicitudesAdmin.value = await response.json();
+    await catalogStore.cancelarSolicitudAdmin(id);
+    toast.add({ severity: 'success', summary: 'Solicitud eliminada', life: 3000 });
   } catch (error) {
     console.error(error);
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error instanceof Error ? error.message : 'No se pudieron cargar las solicitudes',
+      detail: error instanceof Error ? error.message : 'No se pudo eliminar la solicitud',
       life: 4000,
     });
   } finally {
-    cargandoSolicitudesAdmin.value = false;
+    cancelandoSolicitud.value = null;
   }
 }
 
 async function aprobarSolicitudAdmin(id: string) {
+  if (!esSuperAdmin.value) return;
   if (aprobandoSolicitud.value) return;
   aprobandoSolicitud.value = id;
   try {
@@ -510,7 +518,7 @@ async function aprobarSolicitudAdmin(id: string) {
     if (!response.ok) {
       throw new Error(data.error || 'No se pudo aprobar la solicitud');
     }
-    solicitudesAdmin.value = solicitudesAdmin.value.filter((solicitud) => solicitud._id !== id);
+    await catalogStore.fetchSolicitudesAdmin(true);
     toast.add({ severity: 'success', summary: 'Administrador aprobado', life: 3000 });
   } catch (error) {
     toast.add({
@@ -536,7 +544,15 @@ onMounted(() => {
   if (!catalogStore.categorias.length) catalogStore.fetchCategorias();
   if (!catalogStore.contenidos.length) catalogStore.fetchContenidos();
   if (!catalogStore.sugerencias.length) catalogStore.fetchSugerencias();
-  fetchSolicitudesAdmin();
+  if (esSuperAdmin.value) {
+    catalogStore.fetchSolicitudesAdmin();
+  }
+});
+
+watch(esSuperAdmin, (value) => {
+  if (value) {
+    catalogStore.fetchSolicitudesAdmin(true);
+  }
 });
 </script>
 

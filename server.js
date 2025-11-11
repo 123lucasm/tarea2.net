@@ -375,7 +375,7 @@ app.post('/api/usuarios', async (req, res) => {
   try {
     const { rol = 'estudiante', ...resto } = req.body;
     const rolNormalizado = typeof rol === 'string' ? rol.toLowerCase() : 'estudiante';
-    if (!['admin', 'estudiante'].includes(rolNormalizado)) {
+    if (!['admin', 'admin_t', 'estudiante'].includes(rolNormalizado)) {
       return res.status(400).json({ error: 'Rol inválido' });
     }
 
@@ -642,6 +642,29 @@ app.get('/api/usuarios/admin/pendientes', async (_req, res) => {
   }
 });
 
+// DELETE - Cancelar solicitud de administrador
+app.delete('/api/usuarios/:id/solicitud-admin', async (req, res) => {
+  try {
+    const usuario = await Usuario.findById(req.params.id);
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    if (usuario.rolSolicitado !== 'admin' || !usuario.requiereAprobacionAdmin) {
+      return res.status(400).json({ error: 'El usuario no tiene una solicitud pendiente de administrador' });
+    }
+
+    usuario.rolSolicitado = null;
+    usuario.requiereAprobacionAdmin = false;
+    await usuario.save();
+
+    res.json({ mensaje: 'Solicitud de administrador cancelada', usuario: usuario.toJSON() });
+  } catch (error) {
+    console.error('Error al cancelar solicitud de administrador:', error);
+    res.status(500).json({ error: 'Error al cancelar la solicitud' });
+  }
+});
+
 // PUT - Aprobar solicitud de administrador
 app.put('/api/usuarios/:id/aprobar-admin', async (req, res) => {
   try {
@@ -658,7 +681,7 @@ app.put('/api/usuarios/:id/aprobar-admin', async (req, res) => {
       return res.status(400).json({ error: 'El usuario no tiene una solicitud pendiente de administrador' });
     }
 
-    usuario.rol = 'admin';
+    usuario.rol = 'admin_t';
     usuario.rolSolicitado = null;
     usuario.requiereAprobacionAdmin = false;
     await usuario.save();
@@ -668,6 +691,123 @@ app.put('/api/usuarios/:id/aprobar-admin', async (req, res) => {
   } catch (error) {
     console.error('Error al aprobar administrador:', error);
     res.status(500).json({ error: 'Error al aprobar al administrador' });
+  }
+});
+
+// GET - Listar administradores activos
+app.get('/api/admin/usuarios', async (_req, res) => {
+  try {
+    const administradores = await Usuario.find({
+      rol: { $in: ['admin', 'admin_t'] },
+      activo: true,
+    })
+      .select('-contraseña -__v')
+      .sort({ createdAt: 1 });
+    res.json(administradores);
+  } catch (error) {
+    console.error('Error al obtener administradores:', error);
+    res.status(500).json({ error: 'Error al obtener los administradores' });
+  }
+});
+
+// PUT - Promover usuario a administrador temporal
+app.put('/api/admin/usuarios/:id/promover', async (req, res) => {
+  try {
+    const usuario = await Usuario.findById(req.params.id);
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    if (usuario.correo === 'admin@admin.com') {
+      return res.status(400).json({ error: 'La cuenta principal ya es administrador permanente' });
+    }
+
+    if (usuario.rol === 'admin') {
+      return res.status(400).json({ error: 'El administrador principal ya es permanente' });
+    }
+
+    if (usuario.rol === 'admin_t') {
+      return res.status(200).json({ mensaje: 'El usuario ya es administrador temporal', usuario: usuario.toJSON() });
+    }
+
+    usuario.rol = 'admin_t';
+    usuario.rolSolicitado = null;
+    usuario.requiereAprobacionAdmin = false;
+    await usuario.save();
+
+    res.json({
+      mensaje: 'Usuario promovido a administrador temporal',
+      usuario: usuario.toJSON(),
+    });
+  } catch (error) {
+    console.error('Error al promover administrador:', error);
+    res.status(500).json({ error: 'Error al promover al administrador' });
+  }
+});
+
+// PUT - Promover usuario por correo
+app.put('/api/admin/usuarios/promover-por-correo', async (req, res) => {
+  try {
+    const { correo } = req.body ?? {};
+    if (!correo?.trim()) {
+      return res.status(400).json({ error: 'Correo requerido' });
+    }
+
+    const usuario = await Usuario.findOne({ correo: correo.trim().toLowerCase(), activo: true });
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    if (usuario.correo === 'admin@admin.com') {
+      return res.status(400).json({ error: 'La cuenta principal ya es administrador permanente' });
+    }
+
+    if (usuario.rol === 'admin_t') {
+      return res.status(200).json({ mensaje: 'El usuario ya es administrador temporal', usuario: usuario.toJSON() });
+    }
+
+    usuario.rol = 'admin_t';
+    usuario.rolSolicitado = null;
+    usuario.requiereAprobacionAdmin = false;
+    await usuario.save();
+
+    res.json({
+      mensaje: 'Usuario promovido a administrador temporal',
+      usuario: usuario.toJSON(),
+    });
+  } catch (error) {
+    console.error('Error al promover por correo:', error);
+    res.status(500).json({ error: 'Error al promover al administrador' });
+  }
+});
+
+// DELETE - Remover privilegios de administrador
+app.delete('/api/admin/usuarios/:id', async (req, res) => {
+  try {
+    const usuario = await Usuario.findById(req.params.id);
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    if (usuario.correo === 'admin@admin.com') {
+      return res.status(400).json({ error: 'No se puede remover al administrador principal' });
+    }
+
+    if (!['admin', 'admin_t'].includes(usuario.rol)) {
+      return res.status(400).json({ error: 'El usuario no es administrador' });
+    }
+
+    usuario.rol = 'estudiante';
+    usuario.rolSolicitado = null;
+    usuario.requiereAprobacionAdmin = false;
+    usuario.rolSolicitado = null;
+    usuario.requiereAprobacionAdmin = false;
+    await usuario.save();
+
+    res.json({ mensaje: 'Privilegios de administrador removidos', usuario: usuario.toJSON() });
+  } catch (error) {
+    console.error('Error al remover administrador:', error);
+    res.status(500).json({ error: 'Error al remover al administrador' });
   }
 });
 

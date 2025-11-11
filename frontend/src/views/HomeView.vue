@@ -251,8 +251,13 @@
                       <PvInputText id="nombre" v-model="sugerencia.nombre" placeholder="Tu nombre" />
                     </div>
                     <div class="col-12 md:col-6 flex flex-column gap-2">
-                      <label for="correo" class="text-sm text-600">Correo electrónico (opcional)</label>
-                      <PvInputText id="correo" v-model="sugerencia.correo" type="email" placeholder="tu@correo.com" />
+                    <label for="sugerencia-correo" class="text-sm text-600">Correo electrónico (opcional)</label>
+                    <PvInputText
+                      id="sugerencia-correo"
+                      v-model="sugerencia.correo"
+                      type="email"
+                      placeholder="tu@correo.com"
+                    />
                     </div>
                   </div>
                   <div class="flex flex-column gap-2">
@@ -398,7 +403,7 @@ const authStore = useAuthStore();
 const catalogStore = useCatalogStore();
 
 const showAllCategories = ref(false);
-const selectedTipo = ref<'todos' | 'infografia' | 'video'>('todos');
+const selectedTipo = ref<'todos' | 'infografia' | 'video' | 'herramienta'>('todos');
 const searchTerm = ref('');
 const selectedCategory = ref<string | null>(null);
 const enviandoSugerencia = ref(false);
@@ -432,14 +437,25 @@ const filterOptions = [
   { label: 'Todos', value: 'todos' as const, icon: 'pi pi-grid' },
   { label: 'Infografías', value: 'infografia' as const, icon: 'pi pi-chart-bar' },
   { label: 'Videos', value: 'video' as const, icon: 'pi pi-video' },
+  { label: 'Herramientas', value: 'herramienta' as const, icon: 'pi pi-wrench' },
 ];
 
 const categorias = computed(() => catalogStore.categorias);
+const totalInfografias = computed(
+  () => catalogStore.contenidos.filter((contenido) => contenido.tipo === 'infografia').length
+);
+const totalVideos = computed(
+  () => catalogStore.contenidos.filter((contenido) => contenido.tipo === 'video').length
+);
+const totalHerramientas = computed(
+  () => catalogStore.contenidos.filter((contenido) => contenido.tipo === 'herramienta').length
+);
 
 const statistics = computed(() => [
-  { label: 'Contenidos publicados', value: catalogStore.totalContenidos },
   { label: 'Categorías activas', value: catalogStore.totalCategorias },
-  { label: 'Sugerencias recibidas', value: catalogStore.totalSugerencias },
+  { label: 'Infografías publicadas', value: totalInfografias.value },
+  { label: 'Videos disponibles', value: totalVideos.value },
+  { label: 'Herramientas útiles', value: totalHerramientas.value },
 ]);
 
 const showPublicSections = computed(() => !authStore.isAdmin);
@@ -495,18 +511,21 @@ const puedeComentar = computed(() => authStore.isAuthenticated);
 const tipoLabel = (tipo: Contenido['tipo']) => {
   if (tipo === 'video') return 'Video';
   if (tipo === 'infografia') return 'Infografía';
+  if (tipo === 'herramienta') return 'Herramienta';
   return tipo;
 };
 
 const tipoSeverity = (tipo: Contenido['tipo']) => {
   if (tipo === 'video') return 'danger';
   if (tipo === 'infografia') return 'info';
+  if (tipo === 'herramienta') return 'success';
   return 'secondary';
 };
 
 const tipoIcon = (tipo: Contenido['tipo']) => {
   if (tipo === 'video') return 'pi pi-video';
   if (tipo === 'infografia') return 'pi pi-chart-bar';
+  if (tipo === 'herramienta') return 'pi pi-wrench';
   return 'pi pi-folder';
 };
 

@@ -50,8 +50,7 @@
             v-model="form.contraseña"
             toggle-mask
             :feedback="false"
-            autocomplete="current-password"
-            :input-props="{ placeholder: '••••••••' }"
+            :input-props="passwordInputProps"
           />
         </div>
 
@@ -135,6 +134,11 @@ const roleOptions = [
   { label: 'Administrador', value: 'admin' as Rol },
   { label: 'Estudiante', value: 'estudiante' as Rol },
 ];
+
+const passwordInputProps = computed(() => ({
+  placeholder: '••••••••',
+  autocomplete: isLogin.value ? 'current-password' : 'new-password',
+}));
 
 function resetForm() {
   form.correo = '';

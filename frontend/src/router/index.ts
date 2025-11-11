@@ -32,6 +32,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/admin/AdminSuggestionsView.vue'),
     meta: { requiresAuth: true, requiresAdmin: true },
   },
+  {
+    path: '/admin/usuarios',
+    name: 'admin-users',
+    component: () => import('@/views/admin/AdminUsersView.vue'),
+    meta: { requiresAuth: true, requiresSuperAdmin: true },
+  },
 ];
 
 const router = createRouter({
@@ -62,7 +68,12 @@ router.beforeEach((to, _from, next) => {
     return;
   }
 
-  if (to.meta.requiresAdmin && authStore.user?.rol !== 'admin') {
+  if (to.meta.requiresAdmin && !['admin', 'admin_t'].includes(authStore.user?.rol ?? '')) {
+    next({ name: 'home' });
+    return;
+  }
+
+  if (to.meta.requiresSuperAdmin && !authStore.isSuperAdmin) {
     next({ name: 'home' });
     return;
   }

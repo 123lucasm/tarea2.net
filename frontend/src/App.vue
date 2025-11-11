@@ -90,7 +90,7 @@ const menuItems = computed(() => {
   ];
 
   if (authStore.isAdmin) {
-    items.push(
+    const adminItems = [
       {
         label: 'Panel',
         icon: 'pi pi-chart-bar',
@@ -118,8 +118,20 @@ const menuItems = computed(() => {
         command: () => {
           void router.push('/admin/sugerencias');
         },
-      }
-    );
+      },
+    ];
+
+    if (authStore.isSuperAdmin) {
+      adminItems.push({
+        label: 'Usuarios admin',
+        icon: 'pi pi-users',
+        command: () => {
+          void router.push('/admin/usuarios');
+        },
+      });
+    }
+
+    items.push(...adminItems);
   } else {
     items.push(
       {

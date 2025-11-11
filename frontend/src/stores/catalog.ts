@@ -10,7 +10,7 @@ export type Contenido = {
   _id: string;
   titulo: string;
   tema: string;
-  tipo: 'infografia' | 'video' | string;
+  tipo: 'infografia' | 'video' | 'herramienta' | string;
   categoria: string;
   descripcion: string;
   enlace: string;
@@ -23,6 +23,18 @@ export type Comentario = {
   autorNombre: string;
   autorCorreo: string;
   texto: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type UsuarioResumen = {
+  _id: string;
+  nombre: string;
+  correo: string;
+  rol: 'admin' | 'admin_t' | 'estudiante';
+  rolSolicitado?: 'admin' | null;
+  requiereAprobacionAdmin?: boolean;
+  activo: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -53,6 +65,10 @@ export const useCatalogStore = defineStore('catalog', {
     contenidosStatus: 'idle' as LoadingState,
     sugerenciasStatus: 'idle' as LoadingState,
     comentariosStatus: new Map<string, LoadingState>(),
+    solicitudesAdmin: [] as UsuarioResumen[],
+    solicitudesAdminStatus: 'idle' as LoadingState,
+    administradores: [] as UsuarioResumen[],
+    administradoresStatus: 'idle' as LoadingState,
   }),
   getters: {
     totalCategorias: (state) => state.categorias.length,
@@ -104,6 +120,65 @@ export const useCatalogStore = defineStore('catalog', {
         console.error(error);
         this.sugerenciasStatus = 'error';
       }
+    },
+    async fetchSolicitudesAdmin(force = false) {
+      if (this.solicitudesAdminStatus === 'loading') return;
+      if (this.solicitudesAdmin.length && !force) return;
+      this.solicitudesAdminStatus = 'loading';
+      try {
+        const response = await fetch('/api/usuarios/admin/pendientes');
+        if (!response.ok) throw new Error('No se pudieron cargar las solicitudes de administrador');
+        this.solicitudesAdmin = await response.json();
+        this.solicitudesAdminStatus = 'success';
+      } catch (error) {
+        console.error(error);
+        this.solicitudesAdminStatus = 'error';
+      }
+    },
+    async cancelarSolicitudAdmin(id: string) {
+      const response = await fetch(`/api/usuarios/${id}/solicitud-admin`, { method: 'DELETE' });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudo cancelar la solicitud');
+      }
+      this.solicitudesAdmin = this.solicitudesAdmin.filter((solicitud) => solicitud._id !== id);
+      return data as { mensaje: string };
+    },
+    async fetchAdministradores(force = false) {
+      if (this.administradoresStatus === 'loading') return;
+      if (this.administradores.length && !force) return;
+      this.administradoresStatus = 'loading';
+      try {
+        const response = await fetch('/api/usuarios/administradores');
+        if (!response.ok) throw new Error('No se pudieron cargar los administradores');
+        this.administradores = await response.json();
+        this.administradoresStatus = 'success';
+      } catch (error) {
+        console.error(error);
+        this.administradoresStatus = 'error';
+      }
+    },
+    async removerAdministrador(id: string) {
+      const response = await fetch(`/api/usuarios/${id}/admin`, { method: 'DELETE' });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudo remover al administrador');
+      }
+      this.administradores = this.administradores.filter((admin) => admin._id !== id);
+      return data as { mensaje: string };
+    },
+    async actualizarAdministrador(id: string, payload: Partial<Pick<UsuarioResumen, 'nombre' | 'correo'>>) {
+      const response = await fetch(`/api/usuarios/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudo actualizar el administrador');
+      }
+      this.administradores = this.administradores.map((admin) => (admin._id === id ? (data as UsuarioResumen) : admin));
+      return data as UsuarioResumen;
     },
     async createCategoria(payload: CategoriaPayload) {
       const response = await fetch('/api/categorias', {

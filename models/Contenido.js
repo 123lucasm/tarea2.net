@@ -9,7 +9,7 @@ const contenidoSchema = new mongoose.Schema({
   tipo: {
     type: String,
     required: [true, 'El tipo es requerido'],
-    enum: ['infografia', 'video'],
+    enum: ['infografia', 'video', 'herramienta'],
     lowercase: true
   },
   tema: {

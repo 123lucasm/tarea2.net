@@ -1,13 +1,13 @@
 import { defineStore } from 'pinia';
 
-type Role = 'admin' | 'estudiante';
+type Role = 'admin' | 'admin_t' | 'estudiante';
 
 type User = {
   _id: string;
   nombre: string;
   correo: string;
   rol: Role;
-  rolSolicitado?: Role | null;
+  rolSolicitado?: 'admin' | null;
   requiereAprobacionAdmin?: boolean;
 };
 
@@ -32,7 +32,8 @@ export const useAuthStore = defineStore('auth', {
   }),
   getters: {
     isAuthenticated: (state) => !!state.user,
-    isAdmin: (state) => state.user?.rol === 'admin',
+    isAdmin: (state) => ['admin', 'admin_t'].includes(state.user?.rol ?? 'estudiante'),
+    isSuperAdmin: (state) => state.user?.rol === 'admin',
   },
   actions: {
     hydrate() {

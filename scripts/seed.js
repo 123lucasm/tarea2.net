@@ -80,6 +80,22 @@ const contenidosIniciales = [
     descripcion: 'Cómo mantener un equilibrio saludable entre tu vida personal y académica.',
     enlace: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
     categoria: 'Productividad'
+  },
+  {
+    titulo: 'Tableros de Trello',
+    tipo: 'herramienta',
+    tema: 'organización',
+    descripcion: 'Planifica proyectos académicos y personales con tableros colaborativos y listas de tareas.',
+    enlace: 'https://trello.com/',
+    categoria: 'Productividad'
+  },
+  {
+    titulo: 'ChatGPT para estudios',
+    tipo: 'herramienta',
+    tema: 'estudio',
+    descripcion: 'Usa un asistente inteligente para resumir textos, practicar preguntas y generar ideas.',
+    enlace: 'https://chat.openai.com/',
+    categoria: 'Estudio'
   }
 ];
 
