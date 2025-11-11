@@ -60,6 +60,17 @@
           <PvInputText id="nombre" v-model="form.nombre" required autocomplete="name" placeholder="Tu nombre" />
         </div>
 
+        <div v-if="!isLogin" class="field">
+          <label>Tipo de cuenta</label>
+          <PvSelectButton
+            v-model="form.rol"
+            :options="roleOptions"
+            option-label="label"
+            option-value="value"
+          />
+          <small class="auth-hint">Elige “Administrador” para gestionar contenidos o “Estudiante” para participar como usuario.</small>
+        </div>
+
         <small v-if="error" class="auth-error">{{ error }}</small>
 
         <PvButton
@@ -87,10 +98,13 @@ import { useAuthStore } from '@/stores/auth';
 
 type AuthMode = 'login' | 'register';
 
+type Rol = 'admin' | 'estudiante';
+
 type AuthForm = {
   correo: string;
   contraseña: string;
   nombre?: string;
+  rol: Rol;
 };
 
 const authStore = useAuthStore();
@@ -104,6 +118,7 @@ const form = reactive<AuthForm>({
   correo: '',
   contraseña: '',
   nombre: '',
+  rol: 'estudiante',
 });
 
 const isLogin = computed(() => mode.value === 'login');
@@ -116,10 +131,16 @@ const secondaryActionLabel = computed(() =>
   isLogin.value ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'
 );
 
+const roleOptions = [
+  { label: 'Administrador', value: 'admin' as Rol },
+  { label: 'Estudiante', value: 'estudiante' as Rol },
+];
+
 function resetForm() {
   form.correo = '';
   form.contraseña = '';
   form.nombre = '';
+  form.rol = 'estudiante';
   error.value = '';
 }
 
@@ -138,18 +159,41 @@ async function handleSubmit() {
   try {
     if (mode.value === 'login') {
       await authStore.login({ correo: form.correo.trim(), contraseña: form.contraseña });
-      toast.add({ severity: 'success', summary: 'Sesión iniciada', life: 3000 });
+      if (authStore.user?.requiereAprobacionAdmin && authStore.user?.rolSolicitado === 'admin') {
+        toast.add({
+          severity: 'info',
+          summary: 'Solicitud pendiente',
+          detail: 'Tu solicitud para ser administrador sigue en revisión. Mientras tanto, puedes navegar como estudiante.',
+          life: 5000,
+        });
+      } else {
+        toast.add({ severity: 'success', summary: 'Sesión iniciada', life: 3000 });
+      }
     } else {
       if (!form.nombre?.trim()) {
         error.value = 'Por favor ingresa tu nombre';
         return;
       }
-      await authStore.register({
+      if (!form.rol) {
+        error.value = 'Selecciona el tipo de cuenta';
+        return;
+      }
+      const data = await authStore.register({
         nombre: form.nombre.trim(),
         correo: form.correo.trim(),
         contraseña: form.contraseña,
+        rol: form.rol,
       });
-      toast.add({ severity: 'success', summary: 'Cuenta creada', detail: 'Bienvenido/a', life: 3000 });
+      if (form.rol === 'admin') {
+        toast.add({
+          severity: 'success',
+          summary: 'Solicitud enviada',
+          detail: 'Un administrador revisará tu solicitud para acceder al panel.',
+          life: 5000,
+        });
+      } else {
+        toast.add({ severity: 'success', summary: 'Cuenta creada', detail: 'Bienvenido/a', life: 3000 });
+      }
     }
     visible.value = false;
     resetForm();
@@ -235,6 +279,11 @@ defineExpose({ open });
 
 .auth-error {
   color: var(--p-red-500);
+}
+
+.auth-hint {
+  color: var(--app-text-secondary);
+  font-size: 0.85rem;
 }
 
 .auth-submit {

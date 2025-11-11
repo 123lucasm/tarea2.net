@@ -186,6 +186,62 @@
         </div>
       </section>
     </div>
+
+    <div class="col-12">
+      <section class="surface-card border-round-2xl shadow-2 p-4 lg:p-5">
+        <div class="flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+          <div>
+            <h2 class="text-xl font-semibold mb-1">Solicitudes de administrador</h2>
+            <p class="text-600 m-0">Aprueba a los usuarios que solicitaron acceso al panel.</p>
+          </div>
+          <PvButton
+            label="Actualizar"
+            icon="pi pi-refresh"
+            severity="secondary"
+            text
+            :loading="cargandoSolicitudesAdmin"
+            @click="fetchSolicitudesAdmin"
+          />
+        </div>
+
+        <div v-if="cargandoSolicitudesAdmin" class="flex align-items-center gap-2 text-600">
+          <i class="pi pi-spin pi-spinner" /> Cargando solicitudes...
+        </div>
+
+        <div v-else-if="solicitudesAdmin.length" class="grid">
+          <div class="col-12 lg:col-6" v-for="usuario in solicitudesAdmin" :key="usuario._id">
+            <PvCard class="approval-card h-full">
+              <template #content>
+                <div class="flex flex-column gap-2">
+                  <div class="flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div>
+                      <h3 class="m-0 text-lg font-semibold">{{ usuario.nombre }}</h3>
+                      <p class="m-0 text-600">{{ usuario.correo }}</p>
+                    </div>
+                    <PvTag value="Solicitud de admin" severity="warning" rounded />
+                  </div>
+                  <p class="m-0 text-600">Registrado el {{ formatFecha(usuario.createdAt) }}</p>
+                </div>
+              </template>
+              <template #footer>
+                <div class="flex justify-content-end gap-2">
+                  <PvButton
+                    label="Aprobar"
+                    icon="pi pi-check"
+                    :loading="aprobandoSolicitud === usuario._id"
+                    @click="aprobarSolicitudAdmin(usuario._id)"
+                  />
+                </div>
+              </template>
+            </PvCard>
+          </div>
+        </div>
+
+        <div v-else class="empty-state border-round-xl p-3 text-center">
+          No hay solicitudes de administrador pendientes.
+        </div>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -199,6 +255,13 @@ import {
   type CategoriaPayload,
   type ContenidoPayload,
 } from '@/stores/catalog';
+
+type SolicitudAdmin = {
+  _id: string;
+  nombre: string;
+  correo: string;
+  createdAt: string;
+};
 
 const router = useRouter();
 const toast = useToast();
@@ -224,6 +287,9 @@ const modoInfografiaOptions = [
 const archivoInfografia = ref<File | null>(null);
 const subiendoInfografia = ref(false);
 const inputArchivoInfografia = ref<HTMLInputElement | null>(null);
+const solicitudesAdmin = ref<SolicitudAdmin[]>([]);
+const cargandoSolicitudesAdmin = ref(false);
+const aprobandoSolicitud = ref<string | null>(null);
 
 const tipoOptions = [
   { label: 'Infografía', value: 'infografia' },
@@ -413,10 +479,64 @@ async function subirInfografiaArchivo(file: File) {
   }
 }
 
+async function fetchSolicitudesAdmin() {
+  if (cargandoSolicitudesAdmin.value) return;
+  cargandoSolicitudesAdmin.value = true;
+  try {
+    const response = await fetch('/api/usuarios/admin/pendientes');
+    if (!response.ok) {
+      throw new Error('No se pudieron obtener las solicitudes');
+    }
+    solicitudesAdmin.value = await response.json();
+  } catch (error) {
+    console.error(error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error instanceof Error ? error.message : 'No se pudieron cargar las solicitudes',
+      life: 4000,
+    });
+  } finally {
+    cargandoSolicitudesAdmin.value = false;
+  }
+}
+
+async function aprobarSolicitudAdmin(id: string) {
+  if (aprobandoSolicitud.value) return;
+  aprobandoSolicitud.value = id;
+  try {
+    const response = await fetch(`/api/usuarios/${id}/aprobar-admin`, { method: 'PUT' });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'No se pudo aprobar la solicitud');
+    }
+    solicitudesAdmin.value = solicitudesAdmin.value.filter((solicitud) => solicitud._id !== id);
+    toast.add({ severity: 'success', summary: 'Administrador aprobado', life: 3000 });
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error instanceof Error ? error.message : 'No se pudo aprobar la solicitud',
+      life: 4000,
+    });
+  } finally {
+    aprobandoSolicitud.value = null;
+  }
+}
+
+function formatFecha(fecha: string) {
+  return new Date(fecha).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
 onMounted(() => {
   if (!catalogStore.categorias.length) catalogStore.fetchCategorias();
   if (!catalogStore.contenidos.length) catalogStore.fetchContenidos();
   if (!catalogStore.sugerencias.length) catalogStore.fetchSugerencias();
+  fetchSolicitudesAdmin();
 });
 </script>
 
@@ -466,6 +586,11 @@ onMounted(() => {
 
 .form-panel {
   height: 100%;
+}
+
+.approval-card {
+  border: 1px solid var(--app-outline);
+  background: rgba(255, 255, 255, 0.92);
 }
 
 label {

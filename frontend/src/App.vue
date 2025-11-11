@@ -67,7 +67,7 @@ const menuItems = computed(() => {
     },
   ];
 
-  if (authStore.isAuthenticated) {
+  if (authStore.isAdmin) {
     items.push(
       {
         label: 'Panel',

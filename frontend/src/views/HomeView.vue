@@ -364,7 +364,7 @@ const statistics = computed(() => [
   { label: 'Sugerencias recibidas', value: catalogStore.totalSugerencias },
 ]);
 
-const showPublicSections = computed(() => !authStore.isAuthenticated);
+const showPublicSections = computed(() => !authStore.isAdmin);
 
 const filteredContenidos = computed(() => {
   const term = searchTerm.value.trim().toLowerCase();
@@ -591,7 +591,7 @@ onMounted(async () => {
 watch(
   () => authStore.isAuthenticated,
   (isAuth) => {
-    if (!isAuth) {
+    if (!isAuth || !authStore.isAdmin) {
       selectedCategory.value = null;
     }
   }
@@ -697,6 +697,7 @@ section.surface-card {
   border: 1px solid rgba(99, 102, 241, 0.3);
   background: linear-gradient(150deg, rgba(248, 250, 255, 0.96), rgba(224, 242, 254, 0.7));
   transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease, background 0.25s ease;
+  height: 100%;
 }
 
 .content-card:hover {
@@ -706,11 +707,18 @@ section.surface-card {
   background: linear-gradient(150deg, rgba(237, 233, 254, 0.98), rgba(224, 242, 254, 0.88));
 }
 
+.content-card :deep(.p-card-body) {
+  height: 100%;
+  display: flex;
+  padding: 1.5rem;
+}
+
 .resource-card {
-  display: grid;
-  grid-template-rows: auto 1fr auto;
+  display: flex;
+  flex-direction: column;
   gap: 1.5rem;
   height: 100%;
+  width: 100%;
 }
 
 .resource-card__header {
@@ -762,12 +770,16 @@ section.surface-card {
   margin: 0;
   color: rgba(76, 81, 191, 0.7);
   line-height: 1.7;
+  flex: 1;
 }
 
 .resource-card__footer {
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  margin-top: auto;
 }
 
 .resource-card__meta {
@@ -783,8 +795,7 @@ section.surface-card {
 }
 
 .resource-card__action {
-  align-self: flex-start;
-  width: 100%;
+  margin-left: auto;
 }
 
 .resource-card__action :deep(.p-button) {
@@ -805,15 +816,16 @@ section.surface-card {
   box-shadow: 0 22px 44px rgba(124, 58, 237, 0.32);
 }
 
-@media (min-width: 720px) {
+@media (max-width: 719px) {
   .resource-card__footer {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
   }
 
   .resource-card__action {
-    width: auto;
+    margin-left: 0;
+    width: 100%;
   }
 }
 

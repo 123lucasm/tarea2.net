@@ -21,6 +21,20 @@ const usuarioSchema = new mongoose.Schema({
     required: [true, 'La contraseña es requerida'],
     minlength: [6, 'La contraseña debe tener al menos 6 caracteres']
   },
+  rol: {
+    type: String,
+    enum: ['admin', 'estudiante'],
+    default: 'estudiante'
+  },
+  rolSolicitado: {
+    type: String,
+    enum: ['admin', null],
+    default: null
+  },
+  requiereAprobacionAdmin: {
+    type: Boolean,
+    default: false
+  },
   activo: {
     type: Boolean,
     default: true

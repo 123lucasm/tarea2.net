@@ -12,25 +12,25 @@ const routes: RouteRecordRaw[] = [
     path: '/admin',
     name: 'admin-dashboard',
     component: () => import('@/views/admin/AdminDashboardView.vue'),
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, requiresAdmin: true },
   },
   {
     path: '/admin/categorias',
     name: 'admin-categories',
     component: () => import('@/views/admin/AdminCategoriesView.vue'),
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, requiresAdmin: true },
   },
   {
     path: '/admin/contenidos',
     name: 'admin-contents',
     component: () => import('@/views/admin/AdminContentsView.vue'),
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, requiresAdmin: true },
   },
   {
     path: '/admin/sugerencias',
     name: 'admin-suggestions',
     component: () => import('@/views/admin/AdminSuggestionsView.vue'),
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, requiresAdmin: true },
   },
 ];
 
@@ -47,6 +47,11 @@ router.beforeEach((to, _from, next) => {
   authStore.hydrate();
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    next({ name: 'home' });
+    return;
+  }
+
+  if (to.meta.requiresAdmin && authStore.user?.rol !== 'admin') {
     next({ name: 'home' });
     return;
   }

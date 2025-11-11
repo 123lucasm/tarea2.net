@@ -372,9 +372,29 @@ app.get('/api/usuarios/correo/:correo', async (req, res) => {
 // POST - Crear nuevo usuario (registro)
 app.post('/api/usuarios', async (req, res) => {
   try {
-    const nuevoUsuario = new Usuario(req.body);
+    const { rol = 'estudiante', ...resto } = req.body;
+    const rolNormalizado = typeof rol === 'string' ? rol.toLowerCase() : 'estudiante';
+    if (!['admin', 'estudiante'].includes(rolNormalizado)) {
+      return res.status(400).json({ error: 'Rol inválido' });
+    }
+
+    const requiereAprobacionAdmin = rolNormalizado === 'admin';
+
+    const nuevoUsuario = new Usuario({
+      ...resto,
+      rol: requiereAprobacionAdmin ? 'estudiante' : rolNormalizado,
+      rolSolicitado: requiereAprobacionAdmin ? 'admin' : null,
+      requiereAprobacionAdmin,
+    });
     await nuevoUsuario.save();
-    res.status(201).json(nuevoUsuario);
+    const usuarioJson = nuevoUsuario.toJSON();
+    if (!usuarioJson.rol) {
+      usuarioJson.rol = 'estudiante';
+    }
+    if (requiereAprobacionAdmin) {
+      usuarioJson.mensaje = 'Solicitud de administrador enviada. Un administrador existente debe aprobar tu cuenta.';
+    }
+    res.status(201).json(usuarioJson);
   } catch (error) {
     console.error('Error al crear usuario:', error);
     if (error.code === 11000) {
@@ -408,9 +428,14 @@ app.post('/api/usuarios/login', async (req, res) => {
     }
     
     // Login exitoso - devolver usuario sin contraseña
+    const usuarioJson = usuario.toJSON();
+    if (!usuarioJson.rol) {
+      usuarioJson.rol = 'estudiante';
+    }
+
     res.json({ 
       mensaje: 'Login exitoso',
-      usuario: usuario.toJSON() 
+      usuario: usuarioJson,
     });
   } catch (error) {
     console.error('Error en login:', error);
@@ -521,6 +546,52 @@ app.post('/api/usuarios/:id/historial/:contenidoId', async (req, res) => {
   } catch (error) {
     console.error('Error al agregar al historial:', error);
     res.status(500).json({ error: 'Error al agregar al historial' });
+  }
+});
+
+// GET - Solicitudes pendientes de administrador
+app.get('/api/usuarios/admin/pendientes', async (_req, res) => {
+  try {
+    const pendientes = await Usuario.find({
+      rolSolicitado: 'admin',
+      requiereAprobacionAdmin: true,
+      activo: true,
+    })
+      .select('-contraseña -__v')
+      .sort({ createdAt: 1 });
+    res.json(pendientes);
+  } catch (error) {
+    console.error('Error al obtener solicitudes de administrador:', error);
+    res.status(500).json({ error: 'Error al obtener las solicitudes' });
+  }
+});
+
+// PUT - Aprobar solicitud de administrador
+app.put('/api/usuarios/:id/aprobar-admin', async (req, res) => {
+  try {
+    const usuario = await Usuario.findById(req.params.id);
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    if (usuario.rol === 'admin') {
+      return res.status(400).json({ error: 'El usuario ya es administrador' });
+    }
+
+    if (usuario.rolSolicitado !== 'admin' || !usuario.requiereAprobacionAdmin) {
+      return res.status(400).json({ error: 'El usuario no tiene una solicitud pendiente de administrador' });
+    }
+
+    usuario.rol = 'admin';
+    usuario.rolSolicitado = null;
+    usuario.requiereAprobacionAdmin = false;
+    await usuario.save();
+
+    const usuarioJson = usuario.toJSON();
+    res.json({ mensaje: 'Usuario promovido a administrador', usuario: usuarioJson });
+  } catch (error) {
+    console.error('Error al aprobar administrador:', error);
+    res.status(500).json({ error: 'Error al aprobar al administrador' });
   }
 });
 
