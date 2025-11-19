@@ -4,8 +4,7 @@
       <div>
         <h1 class="text-3xl font-semibold mb-1">Usuarios administradores</h1>
         <p class="text-600 m-0">
-          Gestiona quién tiene acceso al panel. Los administradores permanentes mantienen el rol <strong>admin</strong>;
-          los temporales usan <strong>admin_t</strong>.
+          Gestiona quién tiene acceso al panel.
         </p>
       </div>
       <div class="flex align-items-center gap-2">
