@@ -106,7 +106,7 @@ const menuItems = computed(() => {
         },
       },
       {
-        label: 'Contenidos',
+        label: 'Recursos',
         icon: 'pi pi-book',
         command: () => {
           void router.push('/admin/contenidos');

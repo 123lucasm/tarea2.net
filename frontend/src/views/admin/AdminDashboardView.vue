@@ -306,7 +306,7 @@ const solicitudesCargando = computed(() => esSuperAdmin.value && solicitudesStat
 const statistics = computed(() => [
   { label: 'Contenidos publicados', value: catalogStore.totalContenidos, icon: 'pi-book' },
   { label: 'Categorías activas', value: catalogStore.totalCategorias, icon: 'pi-sitemap' },
-  { label: 'Sugerencias pendientes', value: catalogStore.totalSugerencias, icon: 'pi-comments' },
+  { label: 'Sugerencias', value: catalogStore.totalSugerencias, icon: 'pi-comments' },
 ]);
 
 const managementLinks = computed(() => [
@@ -318,7 +318,7 @@ const managementLinks = computed(() => [
     icon: 'pi-tags',
   },
   {
-    label: 'Contenidos',
+    label: 'Recursos',
     description: 'Revisa y publica nuevos recursos',
     to: '/admin/contenidos',
     total: catalogStore.totalContenidos,
