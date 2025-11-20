@@ -6,7 +6,7 @@
         <div class="col-12 lg:col-7 flex flex-column gap-3">
           <h1 class="text-4xl lg:text-5xl font-bold line-height-2">Encuentra tu equilibrio académico y personal</h1>
           <p class="text-lg text-600">
-            Explora recursos, comunidades y actividades diseñadas para acompañarte durante tu primer año universitario.
+            Explora recursos, comunidades y actividades diseñadas para acompañarte durante tus años universitarios.
           </p>
           <div class="flex flex-wrap gap-2">
             <PvButton
@@ -158,7 +158,7 @@
         </div>
       </div>
 
-      <div v-if="filteredContenidos.length" class="grid">
+      <div v-if="filteredContenidos.length" class="grid contents-grid">
         <div class="col-12 md:col-6 lg:col-4" v-for="contenido in filteredContenidos" :key="contenido._id">
           <PvCard class="content-card h-full">
             <template #content>
@@ -217,8 +217,7 @@
                   <span class="community-card__icon"><i class="pi pi-discord" /></span>
                   <h3>Servidor en Discord</h3>
                   <p>
-                    Únete al servidor oficial para acceder a canales temáticos, sesiones de estudio en vivo y mentorías
-                    con estudiantes avanzados.
+                    Únete al servidor oficial de Discord del TIPy para acceder a los canales de comunicación, secciones de información del TIPy, y mucho más.
                   </p>
                   <PvButton
                     label="Entrar al servidor"
@@ -876,11 +875,22 @@ section.surface-card {
   color: var(--app-text-secondary);
 }
 
+.contents-grid {
+  align-items: stretch;
+}
+
+.contents-grid > div {
+  display: flex;
+  flex-direction: column;
+}
+
 .content-card {
   border: 1px solid rgba(99, 102, 241, 0.3);
   background: linear-gradient(150deg, rgba(248, 250, 255, 0.96), rgba(224, 242, 254, 0.7));
   transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease, background 0.25s ease;
   height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .content-card:hover {
@@ -954,6 +964,14 @@ section.surface-card {
   color: rgba(76, 81, 191, 0.7);
   line-height: 1.7;
   flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: calc(1.7em * 3);
+  max-height: calc(1.7em * 3);
 }
 
 .resource-card__footer {

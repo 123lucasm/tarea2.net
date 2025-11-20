@@ -60,7 +60,7 @@
         <form class="grid" @submit.prevent="crearContenido">
           <div class="col-12 md:col-6 flex flex-column gap-2">
             <label for="contenido-titulo" class="text-sm text-600">Título</label>
-            <PvInputText id="contenido-titulo" v-model="contenidoForm.titulo" required placeholder="Ej: Guía de pomodoro" />
+            <PvInputText id="contenido-titulo" v-model="contenidoForm.titulo" required placeholder="Ej: ¿Cómo organizar tu tiempo?" />
           </div>
           <div class="col-12 md:col-6 flex flex-column gap-2">
             <label for="contenido-tema" class="text-sm text-600">Tema</label>
