@@ -18,7 +18,6 @@ const Comentario = require('./models/Comentario');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const distPath = path.join(__dirname, 'frontend', 'dist');
-const publicPath = path.join(__dirname, 'public');
 const isDistBuilt = fs.existsSync(distPath);
 const distIndexExists = fs.existsSync(path.join(distPath, 'index.html'));
 const upload = multer({
@@ -28,7 +27,6 @@ const upload = multer({
 
 console.log('📁 Paths estáticos configurados:');
 console.log(`   distPath: ${distPath}`);
-console.log(`   publicPath: ${publicPath}`);
 console.log(`   distPath existe: ${isDistBuilt}`);
 console.log(`   dist/index.html existe: ${distIndexExists}`);
 
@@ -43,8 +41,8 @@ if (isDistBuilt && distIndexExists) {
   console.log('✅ Sirviendo assets del build de Vue desde frontend/dist');
   app.use(express.static(distPath));
 } else {
-  console.warn('⚠️  No se encontró un build válido de Vue. Sirviendo assets legacy desde /public');
-  app.use(express.static(publicPath));
+  console.error('❌ ERROR: No se encontró un build válido de Vue en frontend/dist');
+  console.error('   Ejecuta: npm run build (desde la raíz del proyecto)');
 }
 
 // ==================== RUTAS API ====================
@@ -817,13 +815,20 @@ app.get('*', (req, res, next) => {
     return next();
   }
 
-  if (isDistBuilt) {
-    console.log('➡️  Respondiendo SPA desde frontend/dist/index.html');
+  if (isDistBuilt && distIndexExists) {
     return res.sendFile(path.join(distPath, 'index.html'));
   }
 
-  console.log('➡️  Respondiendo SPA legado desde public/index.html');
-  res.sendFile(path.join(publicPath, 'index.html'));
+  res.status(500).send(`
+    <html>
+      <head><title>Error - Build no encontrado</title></head>
+      <body style="font-family: Arial; padding: 2rem; text-align: center;">
+        <h1>❌ Build de Vue no encontrado</h1>
+        <p>Por favor ejecuta: <code>npm run build</code></p>
+        <p>Esto generará los archivos necesarios en <code>frontend/dist</code></p>
+      </body>
+    </html>
+  `);
 });
 
 // Iniciar servidor

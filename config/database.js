@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    // En Mongoose 8.x, useNewUrlParser y useUnifiedTopology ya no son necesarios
     const conn = await mongoose.connect(process.env.MONGO_URI);
 
     console.log(`✅ MongoDB Atlas conectado exitosamente`);
